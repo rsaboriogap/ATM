@@ -1,0 +1,161 @@
+﻿<EditForm Model="_model"
+          OnValidSubmit="SubmitAsync">
+
+    <DataAnnotationsValidator />
+
+    <fieldset disabled="@Disabled">
+
+        <div class="mb-3">
+            <label for="operation-account"
+                   class="form-label">
+                Account
+            </label>
+
+            <InputSelect id="operation-account"
+                         class="form-select"
+                         @bind-Value="_model.AccountId">
+
+                <option value="">
+                    Select an account
+                </option>
+
+                @foreach (var account in Accounts)
+                {
+                    <option value="@account.Id">
+                        @account.Name
+                        (@MoneyFormatter.Format(account.Balance))
+                    </option>
+                }
+
+            </InputSelect>
+
+            <ValidationMessage For="@(() => _model.AccountId)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="operation-amount"
+                   class="form-label">
+                Amount (USD)
+            </label>
+
+            <div class="input-group">
+
+                <span class="input-group-text">$</span>
+
+                <InputNumber id="operation-amount"
+                             class="form-control"
+                             @bind-Value="_model.Amount"
+                             step="0.01"
+                             placeholder="0.00" />
+
+            </div>
+
+            <ValidationMessage For="@(() => _model.Amount)" />
+        </div>
+
+        @if (SelectedAccount is not null)
+        {
+            <p class="text-muted small">
+                Available balance:
+                @MoneyFormatter.Format(SelectedAccount.Balance)
+            </p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_localError))
+        {
+            <div class="alert alert-danger"
+                 role="alert">
+                @_localError
+            </div>
+        }
+
+        <button type="submit"
+                class="btn btn-atm w-100"
+                disabled="@Disabled">
+
+            @if (Disabled)
+            {
+                <span>Unavailable</span>
+            }
+            else
+            {
+                @SubmitLabel
+            }
+
+        </button>
+
+    </fieldset>
+
+</EditForm>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<AccountDto> Accounts { get; set; }
+        = Array.Empty<AccountDto>();
+
+    [Parameter]
+    public Guid? DefaultAccountId { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool IsWithdrawal { get; set; }
+
+    [Parameter]
+    public string SubmitLabel { get; set; } = "Confirm";
+
+    [Parameter]
+    public EventCallback<(Guid AccountId, decimal Amount)>
+        OnSubmit
+    { get; set; }
+
+    private readonly AccountOperationFormModel _model = new();
+
+    private Guid? _previousDefaultAccountId;
+
+    private string? _localError;
+
+    private AccountDto? SelectedAccount =>
+        Accounts.FirstOrDefault(
+            account => account.Id == _model.AccountId);
+
+    protected override void OnParametersSet()
+    {
+        if (_previousDefaultAccountId != DefaultAccountId
+            || _model.AccountId is null)
+        {
+            _model.AccountId = DefaultAccountId
+                ?? Accounts.FirstOrDefault()?.Id;
+
+            _previousDefaultAccountId = DefaultAccountId;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (Disabled)
+        {
+            return;
+        }
+
+        _localError = null;
+
+        if (SelectedAccount is null)
+        {
+            _localError = "Select a valid account.";
+            return;
+        }
+
+        var amount = _model.Amount!.Value;
+
+        if (IsWithdrawal && amount > SelectedAccount.Balance)
+        {
+            _localError = "The account has insufficient funds.";
+            return;
+        }
+
+        await OnSubmit.InvokeAsync(
+            (SelectedAccount.Id, amount));
+    }
+}

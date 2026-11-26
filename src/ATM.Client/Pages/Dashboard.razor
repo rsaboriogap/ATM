@@ -1,0 +1,338 @@
+﻿@page "/"
+
+@inject AtmState State
+
+@implements IDisposable
+
+<PageTitle>ATM Banking</PageTitle>
+
+<div class="atm-dashboard"
+     aria-busy="@(State.IsBusy ? "true" : "false")">
+
+    <header class="dashboard-header">
+
+        <div>
+            <h1>ATM Banking</h1>
+
+            <p class="section-description">
+                Manage your accounts and transactions.
+            </p>
+        </div>
+
+        <button type="button"
+                class="btn btn-outline-secondary"
+                disabled="@State.IsBusy"
+                data-testid="refresh-button"
+                @onclick="RefreshAsync">
+
+            Refresh accounts
+
+        </button>
+
+    </header>
+
+    <LoadingIndicator Visible="@State.IsBusy" />
+
+    <ErrorAlert Error="@State.Error"
+                OnDismiss="@State.ClearError" />
+
+    <SuccessAlert Message="@_successMessage"
+                  OnDismiss="ClearSuccess" />
+
+    <ReconciliationAlert Visible="@State.RequiresReconciliation"
+                         Disabled="@State.IsBusy"
+                         OnRefresh="RefreshAsync" />
+
+    @if (State.IsInitialized)
+    {
+        <BalanceSummary TotalBalance="@State.TotalBalance"
+                        AccountCount="@State.Accounts.Count" />
+
+        <section class="account-grid"
+                 aria-label="Your accounts">
+
+            @foreach (var account in State.Accounts)
+            {
+                <AccountCard @key="account.Id"
+                             Account="@account"
+                             IsSelected="@(account.Id ==
+                                        State.SelectedAccountId)"
+                             Disabled="@State.IsBusy"
+                             OnSelected="SelectAccountAsync" />
+            }
+
+        </section>
+
+        <div class="dashboard-content">
+
+            <section class="atm-panel">
+
+                <h2 class="section-title">
+                    Quick actions
+                </h2>
+
+                <div class="operation-tabs"
+                     aria-label="Financial operations">
+
+                    <button type="button"
+                            class="@GetOperationClass(
+                                                        FinancialOperation.Deposit)"
+                            aria-pressed="@IsActive(
+                                                        FinancialOperation.Deposit)"
+                            disabled="@OperationsDisabled"
+                            data-testid="deposit-tab"
+                            @onclick="() => ChangeOperation(
+                                                        FinancialOperation.Deposit)">
+Deposit
+</button>
+
+                    <button type="button"
+                            class="@GetOperationClass(
+                                                        FinancialOperation.Withdrawal)"
+                            aria-pressed="@IsActive(
+                                                        FinancialOperation.Withdrawal)"
+                            disabled="@OperationsDisabled"
+                            data-testid="withdrawal-tab"
+                            @onclick="() => ChangeOperation(
+                                                        FinancialOperation.Withdrawal)">
+Withdraw
+</button>
+
+                    <button type="button"
+                            class="@GetOperationClass(
+                                                        FinancialOperation.Transfer)"
+                            aria-pressed="@IsActive(
+                                                        FinancialOperation.Transfer)"
+                            disabled="@OperationsDisabled"
+                            data-testid="transfer-tab"
+                            @onclick="() => ChangeOperation(
+                                                        FinancialOperation.Transfer)">
+Transfer
+</button>
+
+                </div>
+
+                @switch (_operation)
+                {
+                    case FinancialOperation.Deposit:
+
+                        <DepositForm @key="_formVersion"
+                                     Accounts="@State.Accounts"
+                                     DefaultAccountId="@State.SelectedAccountId"
+                                     Disabled="@OperationsDisabled"
+                                     OnSubmit="DepositAsync" />
+
+                        break;
+
+                    case FinancialOperation.Withdrawal:
+
+                        <WithdrawalForm @key="_formVersion"
+                                        Accounts="@State.Accounts"
+                                        DefaultAccountId="@State.SelectedAccountId"
+                                        Disabled="@OperationsDisabled"
+                                        OnSubmit="WithdrawAsync" />
+
+                        break;
+
+                    case FinancialOperation.Transfer:
+
+                        <TransferForm @key="_formVersion"
+                                      Accounts="@State.Accounts"
+                                      DefaultAccountId="@State.SelectedAccountId"
+                                      Disabled="@OperationsDisabled"
+                                      OnSubmit="TransferAsync" />
+
+                        break;
+                }
+
+            </section>
+
+            <section class="atm-panel">
+
+                <TransactionHistory AccountName="@State.SelectedAccount?.Name"
+                                    Transactions="@State.Transactions" />
+
+            </section>
+
+        </div>
+    }
+    else if (!State.IsBusy)
+    {
+        <section class="atm-panel empty-state">
+
+            <h2>Unable to load accounts</h2>
+
+            <p>
+                Verify the server connection and refresh.
+            </p>
+
+        </section>
+    }
+
+</div>
+
+@code {
+    private FinancialOperation _operation =
+        FinancialOperation.Deposit;
+
+    private string? _successMessage;
+
+    private int _formVersion;
+
+    private bool _disposed;
+
+    private bool OperationsDisabled =>
+        State.IsBusy
+        || State.RequiresReconciliation
+        || !State.IsInitialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += HandleStateChanged;
+
+        await State.InitializeAsync();
+    }
+
+    private async Task SelectAccountAsync(Guid accountId)
+    {
+        _successMessage = null;
+
+        await State.SelectAccountAsync(accountId);
+    }
+
+    private async Task RefreshAsync()
+    {
+        _successMessage = null;
+
+        await State.RefreshAsync();
+    }
+
+    private void ChangeOperation(
+        FinancialOperation operation)
+    {
+        if (OperationsDisabled)
+        {
+            return;
+        }
+
+        _operation = operation;
+
+        _successMessage = null;
+
+        State.ClearError();
+    }
+
+    private string IsActive(
+        FinancialOperation operation)
+    {
+        return _operation == operation
+            ? "true"
+            : "false";
+    }
+
+    private string GetOperationClass(
+        FinancialOperation operation)
+    {
+        return _operation == operation
+            ? "operation-tab operation-tab-active"
+            : "operation-tab";
+    }
+
+    private async Task DepositAsync(
+        (Guid AccountId, decimal Amount) request)
+    {
+        if (OperationsDisabled)
+        {
+            return;
+        }
+
+        _successMessage = null;
+
+        var success = await State.DepositAsync(
+            request.AccountId,
+            request.Amount);
+
+        if (success)
+        {
+            CompleteOperation(
+                $"Deposit of " +
+                $"{MoneyFormatter.Format(request.Amount)} " +
+                "completed successfully.");
+        }
+    }
+
+    private async Task WithdrawAsync(
+        (Guid AccountId, decimal Amount) request)
+    {
+        if (OperationsDisabled)
+        {
+            return;
+        }
+
+        _successMessage = null;
+
+        var success = await State.WithdrawAsync(
+            request.AccountId,
+            request.Amount);
+
+        if (success)
+        {
+            CompleteOperation(
+                $"Withdrawal of " +
+                $"{MoneyFormatter.Format(request.Amount)} " +
+                "completed successfully.");
+        }
+    }
+
+    private async Task TransferAsync(
+        TransferRequest request)
+    {
+        if (OperationsDisabled)
+        {
+            return;
+        }
+
+        _successMessage = null;
+
+        var success = await State.TransferAsync(
+            request.SourceAccountId,
+            request.DestinationAccountId,
+            request.Amount);
+
+        if (success)
+        {
+            CompleteOperation(
+                $"Transfer of " +
+                $"{MoneyFormatter.Format(request.Amount)} " +
+                "completed successfully.");
+        }
+    }
+
+    private void CompleteOperation(string message)
+    {
+        _successMessage = message;
+
+        // Recreate the form after a successful operation.
+        _formVersion++;
+    }
+
+    private void ClearSuccess()
+    {
+        _successMessage = null;
+    }
+
+    private void HandleStateChanged()
+    {
+        if (!_disposed)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+
+        State.OnChange -= HandleStateChanged;
+    }
+}

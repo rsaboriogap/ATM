@@ -1,0 +1,23 @@
+﻿@if (Visible)
+{
+    <div class="loading-indicator"
+         role="status"
+         aria-live="polite">
+
+        <span class="spinner-border spinner-border-sm"
+              aria-hidden="true">
+        </span>
+
+        <span>@Message</span>
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public string Message { get; set; }
+        = "Processing your request...";
+}

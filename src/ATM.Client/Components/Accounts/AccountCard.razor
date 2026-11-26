@@ -1,0 +1,61 @@
+﻿@namespace ATM.Client.Components.Accounts
+@using ATM.Client.DTOs
+@using ATM.Client.Formatting
+
+<button type="button"
+        class="@CardClass"
+        aria-pressed="@(IsSelected ? "true" : "false")"
+        disabled="@Disabled"
+        data-testid="account-card"
+        @onclick="SelectAccountAsync">
+
+    <span class="account-card-header">
+
+        <span class="account-name">
+            @Account.Name
+        </span>
+
+        @if (IsSelected)
+        {
+            <span class="account-selected">
+                Selected
+            </span>
+        }
+
+    </span>
+
+    <span class="account-balance">
+        @MoneyFormatter.Format(Account.Balance)
+    </span>
+
+    <span class="account-description">
+        Available balance · @Account.Currency
+    </span>
+
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public AccountDto Account { get; set; } = default!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSelected { get; set; }
+
+    private string CardClass =>
+        IsSelected
+            ? "account-card account-card-selected"
+            : "account-card";
+
+    private Task SelectAccountAsync()
+    {
+        return Disabled
+            ? Task.CompletedTask
+            : OnSelected.InvokeAsync(Account.Id);
+    }
+}

@@ -1,0 +1,37 @@
+﻿<Router AppAssembly="@typeof(App).Assembly">
+
+    <Found Context="routeData">
+
+        <RouteView RouteData="@routeData"
+                   DefaultLayout="@typeof(MainLayout)" />
+
+        <FocusOnNavigate RouteData="@routeData"
+                         Selector="h1" />
+
+    </Found>
+
+    <NotFound>
+
+        <PageTitle>Page not found</PageTitle>
+
+        <LayoutView Layout="@typeof(MainLayout)">
+
+            <section class="atm-panel">
+
+                <h1>Page not found</h1>
+
+                <p>
+                    The requested page does not exist.
+                </p>
+
+                <a href="" class="btn btn-atm">
+                    Return to dashboard
+                </a>
+
+            </section>
+
+        </LayoutView>
+
+    </NotFound>
+
+</Router>

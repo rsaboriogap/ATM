@@ -1,0 +1,49 @@
+﻿@if (Error is not null)
+{
+    <div class="alert alert-danger alert-dismissible"
+         role="alert">
+
+        <strong>Operation could not be completed</strong>
+
+        <p class="mb-1">
+            @Error.Message
+        </p>
+
+        @if (Error.ValidationErrors is not null)
+        {
+            <ul class="mb-2">
+
+                @foreach (var field in Error.ValidationErrors)
+                {
+                    @foreach (var message in field.Value)
+                    {
+                        <li>@message</li>
+                    }
+                }
+
+            </ul>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Error.TraceId))
+        {
+            <small class="d-block">
+                Reference: @Error.TraceId
+            </small>
+        }
+
+        <button type="button"
+                class="btn-close"
+                aria-label="Dismiss error"
+                @onclick="OnDismiss">
+        </button>
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ClientError? Error { get; set; }
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+}

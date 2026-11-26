@@ -1,0 +1,386 @@
+﻿:root {
+    --atm-primary: #142b42;
+    --atm-accent: #2563eb;
+    --atm-background: #f1f5f9;
+    --atm-surface: #ffffff;
+    --atm-text: #1e293b;
+    --atm-muted: #64748b;
+    --atm-border: #e2e8f0;
+    --atm-success: #15803d;
+    --atm-danger: #b91c1c;
+    --atm-radius: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--atm-background);
+    color: var(--atm-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.atm-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.atm-navbar {
+    background: var(--atm-surface);
+    border-bottom: 1px solid var(--atm-border);
+}
+
+.atm-navbar-content {
+    max-width: 1280px;
+    margin: auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atm-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    color: var(--atm-primary);
+    text-decoration: none;
+}
+
+.atm-brand-icon {
+    background: var(--atm-primary);
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.atm-navbar-description {
+    color: var(--atm-muted);
+    font-size: 14px;
+}
+
+.atm-main {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    flex: 1;
+}
+
+.atm-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+    .dashboard-header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+.section-title {
+    font-size: 18px;
+    font-weight: 650;
+    margin-bottom: 8px;
+}
+
+.section-description {
+    color: var(--atm-muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.balance-summary {
+    background: var(--atm-primary);
+    color: white;
+    border-radius: var(--atm-radius);
+    padding: 32px;
+}
+
+.balance-label,
+.balance-description {
+    color: #cbd5e1;
+    font-size: 14px;
+}
+
+.balance-total {
+    font-size: clamp(32px, 5vw, 44px);
+    font-weight: 700;
+    margin: 8px 0;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.account-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    padding: 24px;
+    background: var(--atm-surface);
+    border: 2px solid var(--atm-border);
+    border-radius: var(--atm-radius);
+    color: var(--atm-text);
+    text-align: left;
+    transition: border-color 150ms ease;
+}
+
+    .account-card:hover:not(:disabled) {
+        border-color: var(--atm-accent);
+    }
+
+.account-card-selected {
+    border-color: var(--atm-accent);
+}
+
+.account-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.account-name {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.account-selected {
+    color: var(--atm-accent);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.account-balance {
+    font-size: clamp(24px, 3vw, 30px);
+    font-weight: 700;
+    color: var(--atm-primary);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.account-description {
+    color: var(--atm-muted);
+    font-size: 13px;
+}
+
+.dashboard-content {
+    display: grid;
+    grid-template-columns: minmax(300px, 2fr) minmax(0, 3fr);
+    align-items: start;
+    gap: 24px;
+}
+
+.atm-panel {
+    min-width: 0;
+    background: var(--atm-surface);
+    border: 1px solid var(--atm-border);
+    border-radius: var(--atm-radius);
+    padding: 24px;
+}
+
+.operation-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 16px 0 24px;
+}
+
+.operation-tab {
+    padding: 12px 8px;
+    border: 1px solid var(--atm-border);
+    border-radius: 8px;
+    background: var(--atm-surface);
+    color: var(--atm-primary);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.operation-tab-active {
+    background: var(--atm-primary);
+    border-color: var(--atm-primary);
+    color: white;
+}
+
+.btn-atm {
+    background: var(--atm-primary);
+    border-color: var(--atm-primary);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+}
+
+    .btn-atm:hover:not(:disabled) {
+        background: #203e5a;
+        border-color: #203e5a;
+        color: white;
+    }
+
+    .btn-atm:disabled {
+        background: var(--atm-primary);
+        color: white;
+        opacity: 0.55;
+    }
+
+.form-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-control,
+.form-select,
+.input-group-text {
+    min-height: 44px;
+    border-color: #cbd5e1;
+}
+
+.validation-message {
+    color: var(--atm-danger);
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.invalid {
+    border-color: var(--atm-danger) !important;
+}
+
+.history-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.transaction-table {
+    font-size: 13px;
+    vertical-align: middle;
+    margin-bottom: 0;
+}
+
+    .transaction-table th,
+    .transaction-table td {
+        padding: 14px 8px;
+        white-space: nowrap;
+    }
+
+.transaction-name {
+    font-weight: 600;
+}
+
+.transaction-date {
+    color: var(--atm-muted);
+}
+
+.transaction-credit {
+    color: var(--atm-success) !important;
+    font-weight: 600;
+}
+
+.transaction-debit {
+    color: var(--atm-text) !important;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--atm-muted);
+}
+
+    .empty-state h3 {
+        font-size: 17px;
+        color: var(--atm-text);
+    }
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--atm-primary);
+    font-size: 14px;
+}
+
+.atm-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 24px;
+    color: var(--atm-muted);
+    font-size: 13px;
+    border-top: 1px solid var(--atm-border);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid var(--atm-accent);
+    outline-offset: 3px;
+}
+
+@media (max-width: 992px) {
+    .dashboard-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .atm-main {
+        padding: 20px 16px;
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .account-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-card,
+    .atm-panel {
+        padding: 18px;
+    }
+
+    .balance-summary {
+        padding: 24px;
+    }
+
+    .atm-navbar-description {
+        display: none;
+    }
+
+    .atm-footer {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-card {
+        transition: none;
+    }
+}

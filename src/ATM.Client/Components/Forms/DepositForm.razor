@@ -1,0 +1,30 @@
+﻿<h2 class="section-title">
+    Make a deposit
+</h2>
+
+<p class="section-description">
+    Add funds to one of your accounts.
+</p>
+
+<AccountOperationForm
+    Accounts="@Accounts"
+    DefaultAccountId="@DefaultAccountId"
+    Disabled="@Disabled"
+    SubmitLabel="Confirm deposit"
+    OnSubmit="@OnSubmit" />
+
+@code {
+    [Parameter]
+    public IReadOnlyList<AccountDto> Accounts { get; set; }
+        = Array.Empty<AccountDto>();
+
+    [Parameter]
+    public Guid? DefaultAccountId { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid AccountId, decimal Amount)>
+        OnSubmit { get; set; }
+}

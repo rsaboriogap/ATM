@@ -1,0 +1,146 @@
+﻿<section aria-label="Transaction history">
+
+    <div class="history-header">
+
+        <div>
+            <h2 class="section-title">
+                Transaction history
+            </h2>
+
+            <p class="section-description">
+                @(AccountName ?? "Select an account")
+            </p>
+        </div>
+
+        <span class="text-muted small">
+            @Transactions.Count transactions
+        </span>
+
+    </div>
+
+    @if (Transactions.Count == 0)
+    {
+        <div class="empty-state"
+             data-testid="empty-history">
+
+            <h3>No transactions yet</h3>
+
+            <p>
+                Your financial activity will appear here.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+
+            <table class="table transaction-table">
+
+                <thead>
+                    <tr>
+                        <th scope="col">Transaction</th>
+                        <th scope="col">Date</th>
+                        <th scope="col" class="text-end">
+                            Amount
+                        </th>
+                        <th scope="col" class="text-end">
+                            Balance
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    @foreach (var transaction in Transactions)
+                    {
+                        <tr @key="transaction.Id">
+
+                            <td>
+                                <span class="transaction-name">
+                                    @GetDisplayName(
+                                        transaction.Type)
+                                </span>
+                            </td>
+
+                            <td class="transaction-date">
+                                @(transaction.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm", CultureInfo.InvariantCulture))
+                            </td>
+
+                            <td class="@GetAmountClass(
+                                                                transaction.Type)">
+
+                                @GetAmount(transaction)
+
+                            </td>
+
+                            <td class="text-end">
+                                @MoneyFormatter.Format(
+                                    transaction.BalanceAfter)
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+
+@code {
+    [Parameter]
+    public string? AccountName { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<TransactionDto> Transactions
+    {
+        get;
+        set;
+    } = Array.Empty<TransactionDto>();
+
+    private static string GetDisplayName(string type)
+    {
+        return type switch
+        {
+            "Deposit" => "Deposit",
+            "Withdrawal" => "Withdrawal",
+            "TransferIn" => "Transfer received",
+            "TransferOut" => "Transfer sent",
+            _ => type
+        };
+    }
+
+    private static string GetAmount(TransactionDto transaction)
+    {
+        return transaction.Type switch
+        {
+            "Deposit" or "TransferIn" =>
+                MoneyFormatter.FormatSigned(
+                    transaction.Amount, true),
+
+            "Withdrawal" or "TransferOut" =>
+                MoneyFormatter.FormatSigned(
+                    transaction.Amount, false),
+
+            _ => MoneyFormatter.Format(transaction.Amount)
+        };
+    }
+
+    private static string GetAmountClass(string type)
+    {
+        return type switch
+        {
+            "Deposit" or "TransferIn" =>
+                "text-end transaction-credit",
+
+            "Withdrawal" or "TransferOut" =>
+                "text-end transaction-debit",
+
+            _ => "text-end"
+        };
+    }
+}

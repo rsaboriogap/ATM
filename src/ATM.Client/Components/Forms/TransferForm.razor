@@ -1,0 +1,202 @@
+﻿<h2 class="section-title">
+    Transfer funds
+</h2>
+
+<p class="section-description">
+    Move money between your accounts.
+</p>
+
+<EditForm Model="_model"
+          OnValidSubmit="SubmitAsync">
+
+    <DataAnnotationsValidator />
+
+    <fieldset disabled="@Disabled">
+
+        <div class="mb-3">
+            <label for="transfer-source"
+                   class="form-label">
+                From account
+            </label>
+
+            <InputSelect id="transfer-source"
+                         class="form-select"
+                         @bind-Value="_model.SourceAccountId"
+                         @bind-Value:after="SourceChanged">
+
+                <option value="">
+                    Select source account
+                </option>
+
+                @foreach (var account in Accounts)
+                {
+                    <option value="@account.Id">
+                        @account.Name
+                        (@MoneyFormatter.Format(account.Balance))
+                    </option>
+                }
+
+            </InputSelect>
+
+            <ValidationMessage For="@(() => _model.SourceAccountId)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="transfer-destination"
+                   class="form-label">
+                To account
+            </label>
+
+            <InputSelect id="transfer-destination"
+                         class="form-select"
+                         @bind-Value="_model.DestinationAccountId">
+
+                <option value="">
+                    Select destination account
+                </option>
+
+                @foreach (var account in DestinationAccounts)
+                {
+                    <option value="@account.Id">
+                        @account.Name
+                    </option>
+                }
+
+            </InputSelect>
+
+            <ValidationMessage For="@(() => _model.DestinationAccountId)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="transfer-amount"
+                   class="form-label">
+                Amount (USD)
+            </label>
+
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+
+                <InputNumber id="transfer-amount"
+                             class="form-control"
+                             @bind-Value="_model.Amount"
+                             step="0.01"
+                             placeholder="0.00" />
+            </div>
+
+            <ValidationMessage For="@(() => _model.Amount)" />
+        </div>
+
+        @if (SourceAccount is not null)
+        {
+            <p class="text-muted small">
+                Available balance:
+                @MoneyFormatter.Format(SourceAccount.Balance)
+            </p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_localError))
+        {
+            <div class="alert alert-danger"
+                 role="alert">
+                @_localError
+            </div>
+        }
+
+        <button type="submit"
+                class="btn btn-atm w-100"
+                disabled="@Disabled">
+            Confirm transfer
+        </button>
+
+    </fieldset>
+
+</EditForm>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<AccountDto> Accounts { get; set; }
+        = Array.Empty<AccountDto>();
+
+    [Parameter]
+    public Guid? DefaultAccountId { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<TransferRequest>
+        OnSubmit
+    { get; set; }
+
+    private TransferFormModel _model = new();
+
+    private Guid? _previousDefaultAccountId;
+
+    private string? _localError;
+
+    private AccountDto? SourceAccount =>
+        Accounts.FirstOrDefault(
+            a => a.Id == _model.SourceAccountId);
+
+    private IEnumerable<AccountDto> DestinationAccounts =>
+        Accounts.Where(
+            a => a.Id != _model.SourceAccountId);
+
+    protected override void OnParametersSet()
+    {
+        if (_previousDefaultAccountId != DefaultAccountId
+            || _model.SourceAccountId is null)
+        {
+            _model.SourceAccountId = DefaultAccountId
+                ?? Accounts.FirstOrDefault()?.Id;
+
+            _previousDefaultAccountId = DefaultAccountId;
+
+            SourceChanged();
+        }
+    }
+
+    private void SourceChanged()
+    {
+        _localError = null;
+
+        if (!DestinationAccounts.Any(
+            a => a.Id == _model.DestinationAccountId))
+        {
+            _model.DestinationAccountId =
+                DestinationAccounts.FirstOrDefault()?.Id;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (Disabled)
+        {
+            return;
+        }
+
+        _localError = null;
+
+        if (SourceAccount is null
+            || !DestinationAccounts.Any(
+                a => a.Id == _model.DestinationAccountId))
+        {
+            _localError = "Select valid accounts.";
+            return;
+        }
+
+        var amount = _model.Amount!.Value;
+
+        if (amount > SourceAccount.Balance)
+        {
+            _localError = "The account has insufficient funds.";
+            return;
+        }
+
+        await OnSubmit.InvokeAsync(
+            new TransferRequest(
+                _model.SourceAccountId!.Value,
+                _model.DestinationAccountId!.Value,
+                amount));
+    }
+}

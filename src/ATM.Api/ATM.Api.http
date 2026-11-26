@@ -1,0 +1,68 @@
+### Invalid amount
+
+POST {{baseUrl}}/api/accounts/{{checkingId}}/deposits
+Content-Type: application/json
+
+{
+  "amount": -100
+}
+
+### Insufficient funds
+
+POST {{baseUrl}}/api/accounts/{{checkingId}}/withdrawals
+Content-Type: application/json
+
+{
+  "amount": 1000000
+}
+
+### Account not found
+
+GET {{baseUrl}}/api/accounts/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+
+### Same account transfer
+
+POST {{baseUrl}}/api/transfers
+Content-Type: application/json
+
+{
+  "sourceAccountId": "{{checkingId}}",
+  "destinationAccountId": "{{checkingId}}",
+  "amount": 100
+}
+
+### Unknown endpoint
+
+GET {{baseUrl}}/api/unknown
+
+### Unsupported content type
+
+POST {{baseUrl}}/api/accounts/{{checkingId}}/deposits
+Content-Type: text/plain
+
+150
+
+### Malformed JSON
+
+POST {{baseUrl}}/api/accounts/{{checkingId}}/deposits
+Content-Type: application/json
+
+{
+  "amount":
+
+### Allowed CORS origin
+
+GET {{baseUrl}}/api/accounts
+Origin: https://localhost:7101
+
+### Disallowed CORS origin
+
+GET {{baseUrl}}/api/accounts
+Origin: https://untrusted.example.com
+
+### CORS preflight
+
+OPTIONS {{baseUrl}}/api/transfers
+Origin: https://localhost:7101
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type

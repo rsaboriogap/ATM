@@ -1,0 +1,43 @@
+﻿@if (Visible)
+{
+    <div class="alert alert-warning"
+         role="alert">
+
+        <h2 class="h6">
+            Transaction status uncertain
+        </h2>
+
+        <p>
+            The previous financial operation may have
+            been completed, but its result could not
+            be confirmed.
+        </p>
+
+        <p>
+            Refresh your balances and review your
+            transaction history before submitting
+            another operation.
+        </p>
+
+        <button type="button"
+                class="btn btn-outline-dark"
+                disabled="@Disabled"
+                @onclick="OnRefresh">
+
+            Refresh accounts
+
+        </button>
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+}

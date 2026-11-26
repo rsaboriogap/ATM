@@ -1,0 +1,31 @@
+﻿<h2 class="section-title">
+    Make a withdrawal
+</h2>
+
+<p class="section-description">
+    Withdraw funds from an available account.
+</p>
+
+<AccountOperationForm
+    Accounts="@Accounts"
+    DefaultAccountId="@DefaultAccountId"
+    Disabled="@Disabled"
+    IsWithdrawal="true"
+    SubmitLabel="Confirm withdrawal"
+    OnSubmit="@OnSubmit" />
+
+@code {
+    [Parameter]
+    public IReadOnlyList<AccountDto> Accounts { get; set; }
+        = Array.Empty<AccountDto>();
+
+    [Parameter]
+    public Guid? DefaultAccountId { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid AccountId, decimal Amount)>
+        OnSubmit { get; set; }
+}

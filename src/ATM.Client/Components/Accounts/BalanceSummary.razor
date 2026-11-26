@@ -1,0 +1,24 @@
+﻿<section class="balance-summary"
+         aria-label="Total available balance">
+
+    <span class="balance-label">
+        Total available balance
+    </span>
+
+    <div class="balance-total">
+        @MoneyFormatter.Format(TotalBalance)
+    </div>
+
+    <span class="balance-description">
+        @AccountCount accounts · USD
+    </span>
+
+</section>
+
+@code {
+    [Parameter]
+    public decimal TotalBalance { get; set; }
+
+    [Parameter]
+    public int AccountCount { get; set; }
+}

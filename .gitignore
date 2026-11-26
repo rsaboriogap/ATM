@@ -1,0 +1,20 @@
+# SQLite databases
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Test results
+TestResults/
+**/TestResults/
+
+# Coverage reports
+coverage/
+coverage.cobertura.xml
+
+# Build reports
+build-warnings.log
+
+# Build artifacts
+**/bin/
+**/obj/

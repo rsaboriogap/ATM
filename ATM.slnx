@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ATM.Api/ATM.Api.csproj" />
+    <Project Path="src/ATM.Application/ATM.Application.csproj" />
+    <Project Path="src/ATM.Client/ATM.Client.csproj" />
+    <Project Path="src/ATM.Domain/ATM.Domain.csproj" />
+    <Project Path="src/ATM.Infrastructure/ATM.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ATM.Client.Tests/ATM.Client.Tests.csproj" />
+    <Project Path="tests/ATM.Tests/ATM.Tests.csproj" />
+  </Folder>
+</Solution>
