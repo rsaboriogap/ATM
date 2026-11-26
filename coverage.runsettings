@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+
+          <Format>cobertura</Format>
+
+          <Include>
+            [ATM.Domain]*,
+            [ATM.Application]*,
+            [ATM.Infrastructure]*,
+            [ATM.Api]*
+          </Include>
+
+          <Exclude>
+            [ATM.Tests]*,
+            [ATM.Client]*
+          </Exclude>
+
+          <ExcludeByFile>
+            **/Migrations/*.cs,
+            **/*.Designer.cs
+          </ExcludeByFile>
+
+          <ExcludeByAttribute>
+            GeneratedCodeAttribute
+          </ExcludeByAttribute>
+
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

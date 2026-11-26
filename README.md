@@ -36,6 +36,30 @@ No database server is needed — SQLite is file-based and created automatically.
 
 ## Setup
 
+### Quick setup (Windows PowerShell)
+
+[Scripts/Setup.ps1](Scripts/Setup.ps1) runs every setup step below. It checks for the .NET 10 SDK, trusts the dev certificate, then restores and builds the solution. It can also run the tests and start both apps:
+
+```powershell
+git clone https://github.com/rsaboriogap/ATM.git
+cd ATM
+.\Scripts\Setup.ps1                  # check SDK, trust cert, restore, build
+.\Scripts\Setup.ps1 -RunTests -Run   # ...then run tests and start the API + client
+```
+
+| Switch | Effect |
+|---|---|
+| `-Configuration Release` | Build in Release (default `Debug`) |
+| `-SkipCertificate` | Skip the HTTPS dev-certificate step |
+| `-ResetDatabase` | Delete `atm.db` so it's recreated and reseeded |
+| `-RunTests` | Run all tests after building |
+| `-Coverage` | Run tests with code coverage |
+| `-Run` | Start the API and client in two new windows |
+
+If script execution is blocked, run `powershell -ExecutionPolicy Bypass -File .\Scripts\Setup.ps1` instead.
+
+To set up manually, follow the steps below.
+
 ### 1. Clone the repository
 
 ```bash
