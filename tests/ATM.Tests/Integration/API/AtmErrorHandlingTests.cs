@@ -82,7 +82,7 @@ public sealed class AtmErrorHandlingTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts[0].Id}/deposits",
             new { Amount = (decimal)invalidAmount });
 
@@ -115,7 +115,7 @@ public sealed class AtmErrorHandlingTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts[0].Id}/withdrawals",
             new { Amount = 1500m });
 
@@ -133,7 +133,7 @@ public sealed class AtmErrorHandlingTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {
@@ -156,7 +156,7 @@ public sealed class AtmErrorHandlingTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {
@@ -179,7 +179,7 @@ public sealed class AtmErrorHandlingTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {

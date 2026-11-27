@@ -126,10 +126,12 @@ public sealed class AtmApiClientTests
         var result = isDeposit
             ? await client.DepositAsync(
                 account.Id,
-                new DepositRequest(150m))
+                new DepositRequest(150m),
+                Guid.NewGuid())
             : await client.WithdrawAsync(
                 account.Id,
-                new WithdrawalRequest(150m));
+                new WithdrawalRequest(150m),
+                Guid.NewGuid());
 
         Assert.Equal(balance, result.Account.Balance);
         Assert.Equal(transactionType, result.Transaction.Type);
@@ -189,11 +191,69 @@ public sealed class AtmApiClientTests
             new TransferRequest(
                 source.Id,
                 destination.Id,
-                300m));
+                300m),
+            Guid.NewGuid());
 
         Assert.Equal(700m, result.SourceAccount.Balance);
         Assert.Equal(1300m, result.DestinationAccount.Balance);
         Assert.Equal(referenceId, result.ReferenceId);
+    }
+
+    [Fact]
+    public async Task Deposit_SendsIdempotencyKeyHeader()
+    {
+        var account = CreateAccount("Checking");
+        var key = Guid.NewGuid();
+        string? sentKey = null;
+
+        using var httpClient = CreateHttpClient(
+            (request, ct) =>
+            {
+                sentKey = request.Headers
+                    .GetValues("Idempotency-Key")
+                    .Single();
+
+                return Task.FromResult(JsonResponse(
+                    HttpStatusCode.OK,
+                    new OperationResultDto(
+                        account,
+                        CreateTransaction(
+                            account.Id,
+                            "Deposit",
+                            100m,
+                            1100m))));
+            });
+
+        var client = CreateClient(httpClient);
+
+        await client.DepositAsync(
+            account.Id,
+            new DepositRequest(100m),
+            key);
+
+        Assert.Equal(key.ToString(), sentKey);
+    }
+
+    [Fact]
+    public async Task GetAccounts_DoesNotSendIdempotencyKey()
+    {
+        var hasKey = true;
+
+        using var httpClient = CreateHttpClient(
+            (request, ct) =>
+            {
+                hasKey = request.Headers.Contains("Idempotency-Key");
+
+                return Task.FromResult(JsonResponse(
+                    HttpStatusCode.OK,
+                    Array.Empty<AccountDto>()));
+            });
+
+        var client = CreateClient(httpClient);
+
+        await client.GetAccountsAsync();
+
+        Assert.False(hasKey);
     }
 
     [Fact]
@@ -263,7 +323,8 @@ public sealed class AtmApiClientTests
         var exception = await Assert.ThrowsAsync<ApiException>(
             () => client.DepositAsync(
                 Guid.NewGuid(),
-                new DepositRequest(100m)));
+                new DepositRequest(100m),
+                Guid.NewGuid()));
 
         Assert.Equal(code, exception.Code);
 
@@ -306,7 +367,8 @@ public sealed class AtmApiClientTests
         var exception = await Assert.ThrowsAsync<ApiException>(
             () => client.DepositAsync(
                 Guid.NewGuid(),
-                new DepositRequest(0m)));
+                new DepositRequest(0m),
+                Guid.NewGuid()));
 
         Assert.NotNull(exception.ProblemDetails?.Errors);
 
@@ -351,7 +413,8 @@ public sealed class AtmApiClientTests
         var exception = await Assert.ThrowsAsync<ApiException>(
             () => client.DepositAsync(
                 Guid.NewGuid(),
-                new DepositRequest(100m)));
+                new DepositRequest(100m),
+                Guid.NewGuid()));
 
         Assert.True(exception.IsMutationOutcomeUnknown);
         Assert.Equal(1, requestCount);
@@ -481,6 +544,7 @@ public sealed class AtmApiClientTests
         var operation = client.DepositAsync(
             Guid.NewGuid(),
             new DepositRequest(100m),
+            Guid.NewGuid(),
             cancellation.Token);
 
         cancellation.Cancel();

@@ -1,4 +1,5 @@
-﻿using ATM.Domain.Entities;
+﻿using ATM.Application.Idempotency;
+using ATM.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ATM.Infrastructure.Persistence;
@@ -14,6 +15,9 @@ public sealed class AtmDbContext : DbContext
     public DbSet<Account> Accounts => Set<Account>();
 
     public DbSet<Transaction> Transactions => Set<Transaction>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords =>
+        Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

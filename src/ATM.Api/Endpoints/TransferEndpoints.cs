@@ -2,6 +2,7 @@
 using ATM.Application.DTOs;
 using ATM.Application.Interfaces;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ATM.Api.Endpoints;
 
@@ -23,6 +24,8 @@ public static class TransferEndpoints
     private static async Task<Ok<TransferResultDto>>
         TransferAsync(
             TransferApiRequest request,
+            [FromHeader(Name = EndpointExtensions.IdempotencyKeyHeader)]
+            Guid? idempotencyKey,
             IAtmService service,
             CancellationToken cancellationToken)
     {
@@ -33,6 +36,7 @@ public static class TransferEndpoints
 
         var result = await service.TransferAsync(
             applicationRequest,
+            idempotencyKey ?? Guid.Empty,
             cancellationToken);
 
         return TypedResults.Ok(result);

@@ -13,11 +13,36 @@
             be confirmed.
         </p>
 
-        <p>
-            Refresh your balances and review your
-            transaction history before submitting
-            another operation.
-        </p>
+        @if (CanRetry)
+        {
+            <p>
+                Retry the operation to confirm it. It is
+                safe: the operation will not be applied
+                twice. Or refresh your balances and review
+                your transaction history.
+            </p>
+        }
+        else
+        {
+            <p>
+                Refresh your balances and review your
+                transaction history before submitting
+                another operation.
+            </p>
+        }
+
+        @if (CanRetry)
+        {
+            <button type="button"
+                    class="btn btn-dark me-2"
+                    disabled="@Disabled"
+                    data-testid="retry-pending-button"
+                    @onclick="OnRetry">
+
+                Retry operation
+
+            </button>
+        }
 
         <button type="button"
                 class="btn btn-outline-dark"
@@ -39,5 +64,11 @@
     public bool Disabled { get; set; }
 
     [Parameter]
+    public bool CanRetry { get; set; }
+
+    [Parameter]
     public EventCallback OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
 }

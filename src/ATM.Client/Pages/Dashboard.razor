@@ -41,7 +41,9 @@
 
     <ReconciliationAlert Visible="@State.RequiresReconciliation"
                          Disabled="@State.IsBusy"
-                         OnRefresh="RefreshAsync" />
+                         CanRetry="@State.CanRetryPendingOperation"
+                         OnRefresh="RefreshAsync"
+                         OnRetry="RetryPendingAsync" />
 
     @if (State.IsInitialized)
     {
@@ -208,6 +210,17 @@ Transfer
         _successMessage = null;
 
         await State.RefreshAsync();
+    }
+
+    private async Task RetryPendingAsync()
+    {
+        _successMessage = null;
+
+        if (await State.RetryPendingOperationAsync())
+        {
+            CompleteOperation(
+                "The pending operation was confirmed.");
+        }
     }
 
     private void ChangeOperation(

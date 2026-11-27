@@ -73,7 +73,7 @@ public abstract class BackendTestBase
         Guid accountId,
         decimal amount)
     {
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accountId}/deposits",
             new { Amount = amount });
 
@@ -90,7 +90,7 @@ public abstract class BackendTestBase
         Guid accountId,
         decimal amount)
     {
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accountId}/withdrawals",
             new { Amount = amount });
 
@@ -108,7 +108,7 @@ public abstract class BackendTestBase
         Guid destinationAccountId,
         decimal amount)
     {
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {

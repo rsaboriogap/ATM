@@ -11,18 +11,24 @@ public interface IAtmService
         Guid accountId,
         CancellationToken cancellationToken = default);
 
+    // Write operations are idempotent per key: a repeated key with the same
+    // request returns the original result without posting again.
+
     Task<OperationResultDto> DepositAsync(
         Guid accountId,
         decimal amount,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default);
 
     Task<OperationResultDto> WithdrawAsync(
         Guid accountId,
         decimal amount,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default);
 
     Task<TransferResultDto> TransferAsync(
         TransferRequest request,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TransactionDto>>

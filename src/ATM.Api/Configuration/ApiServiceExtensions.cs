@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using ATM.Api.Endpoints;
 using ATM.Api.ErrorHandling;
 using Microsoft.AspNetCore.Mvc;
 
@@ -54,7 +55,10 @@ public static class ApiServiceExtensions
                     policy
                         .WithOrigins(corsOptions.AllowedOrigins)
                         .WithMethods("GET", "POST")
-                        .WithHeaders("Content-Type", "Accept");
+                        .WithHeaders(
+                            "Content-Type",
+                            "Accept",
+                            EndpointExtensions.IdempotencyKeyHeader);
                 });
         });
 

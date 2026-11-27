@@ -118,6 +118,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 _checking.Id,
                 new DepositRequest(150m),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 new OperationResultDto(
@@ -157,6 +158,7 @@ public sealed class AtmStateTests
             .Setup(api => api.WithdrawAsync(
                 _checking.Id,
                 new WithdrawalRequest(250m),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 new OperationResultDto(
@@ -200,6 +202,7 @@ public sealed class AtmStateTests
                     _checking.Id,
                     _savings.Id,
                     300m),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 new TransferResultDto(
@@ -242,6 +245,7 @@ public sealed class AtmStateTests
             .Setup(api => api.WithdrawAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<WithdrawalRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(
@@ -273,6 +277,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(
@@ -300,6 +305,7 @@ public sealed class AtmStateTests
             api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -313,6 +319,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(
@@ -364,6 +371,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(
@@ -400,6 +408,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .Returns(pending.Task);
 
@@ -436,6 +445,7 @@ public sealed class AtmStateTests
             api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -465,6 +475,7 @@ public sealed class AtmStateTests
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(
@@ -478,6 +489,171 @@ public sealed class AtmStateTests
 
         Assert.Null(state.Error);
         Assert.True(state.RequiresReconciliation);
+    }
+
+    [Fact]
+    public async Task EachSubmission_UsesNewIdempotencyKey()
+    {
+        var state = await CreateInitializedStateAsync();
+        var keys = new List<Guid>();
+
+        _apiClient
+            .Setup(api => api.DepositAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Guid, DepositRequest, Guid, CancellationToken>(
+                (_, _, key, _) => keys.Add(key))
+            .ReturnsAsync(DepositResult(100m, 1100m));
+
+        await state.DepositAsync(_checking.Id, 100m);
+        await state.DepositAsync(_checking.Id, 100m);
+
+        Assert.Equal(2, keys.Count);
+        Assert.NotEqual(keys[0], keys[1]);
+        Assert.DoesNotContain(Guid.Empty, keys);
+    }
+
+    [Fact]
+    public async Task RetryPendingOperation_ReusesKeyAndClearsReconciliation()
+    {
+        var state = await CreateInitializedStateAsync();
+        var keys = new List<Guid>();
+        var attempts = 0;
+
+        _apiClient
+            .Setup(api => api.WithdrawAsync(
+                _checking.Id,
+                new WithdrawalRequest(100m),
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Guid, WithdrawalRequest, Guid, CancellationToken>(
+                (_, _, key, _) => keys.Add(key))
+            .Returns(() => ++attempts == 1
+                ? Task.FromException<OperationResultDto>(
+                    new ApiException(
+                        "Response was lost.",
+                        "network_error",
+                        isMutationOutcomeUnknown: true))
+                : Task.FromResult(new OperationResultDto(
+                    _checking with { Balance = 900m },
+                    CreateTransaction(
+                        _checking.Id,
+                        "Withdrawal",
+                        100m,
+                        900m))));
+
+        Assert.False(await state.WithdrawAsync(_checking.Id, 100m));
+        Assert.True(state.RequiresReconciliation);
+        Assert.True(state.CanRetryPendingOperation);
+
+        Assert.True(await state.RetryPendingOperationAsync());
+
+        Assert.Equal(2, keys.Count);
+        Assert.Equal(keys[0], keys[1]);
+        Assert.False(state.RequiresReconciliation);
+        Assert.False(state.CanRetryPendingOperation);
+        Assert.Equal(900m, state.SelectedAccount!.Balance);
+        Assert.Null(state.Error);
+    }
+
+    [Fact]
+    public async Task RetryPendingOperation_StillUncertain_KeepsRetryAvailable()
+    {
+        var state = await CreateInitializedStateAsync();
+
+        SetupUncertainDeposit();
+
+        await state.DepositAsync(_checking.Id, 100m);
+
+        Assert.False(await state.RetryPendingOperationAsync());
+
+        Assert.True(state.RequiresReconciliation);
+        Assert.True(state.CanRetryPendingOperation);
+    }
+
+    [Fact]
+    public async Task RetryPendingOperation_DefiniteRejection_ClearsReconciliation()
+    {
+        var state = await CreateInitializedStateAsync();
+        var attempts = 0;
+
+        _apiClient
+            .Setup(api => api.WithdrawAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<WithdrawalRequest>(),
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromException<OperationResultDto>(
+                ++attempts == 1
+                    ? new ApiException(
+                        "Response was lost.",
+                        "network_error",
+                        isMutationOutcomeUnknown: true)
+                    : new ApiException(
+                        "Insufficient funds.",
+                        "insufficient_funds",
+                        HttpStatusCode.Conflict)));
+
+        await state.WithdrawAsync(_checking.Id, 1500m);
+
+        Assert.False(await state.RetryPendingOperationAsync());
+
+        // The server answered definitively: the withdrawal was not applied.
+        Assert.False(state.RequiresReconciliation);
+        Assert.False(state.CanRetryPendingOperation);
+        Assert.Equal("insufficient_funds", state.Error?.Code);
+    }
+
+    [Fact]
+    public async Task Refresh_DiscardsPendingRetry()
+    {
+        var state = await CreateInitializedStateAsync();
+
+        SetupUncertainDeposit();
+
+        await state.DepositAsync(_checking.Id, 100m);
+        await state.RefreshAsync();
+
+        Assert.False(state.CanRetryPendingOperation);
+        Assert.False(await state.RetryPendingOperationAsync());
+    }
+
+    [Fact]
+    public async Task RetryPendingOperation_NothingPending_ReturnsFalse()
+    {
+        var state = await CreateInitializedStateAsync();
+
+        Assert.False(await state.RetryPendingOperationAsync());
+    }
+
+    private void SetupUncertainDeposit()
+    {
+        _apiClient
+            .Setup(api => api.DepositAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new ApiException(
+                    "Connection interrupted.",
+                    "network_error",
+                    isMutationOutcomeUnknown: true));
+    }
+
+    private OperationResultDto DepositResult(
+        decimal amount,
+        decimal balanceAfter)
+    {
+        return new OperationResultDto(
+            _checking with { Balance = balanceAfter },
+            CreateTransaction(
+                _checking.Id,
+                "Deposit",
+                amount,
+                balanceAfter));
     }
 
     private AtmState CreateState()
