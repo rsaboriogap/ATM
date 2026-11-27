@@ -18,3 +18,7 @@ build-warnings.log
 # Build artifacts
 **/bin/
 **/obj/
+
+# Visual Studio local state
+.vs/
+ATM.slnLaunch.user
