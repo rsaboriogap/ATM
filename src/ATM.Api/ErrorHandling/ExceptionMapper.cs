@@ -24,6 +24,18 @@ public static class ExceptionMapper
                 "Invalid transfer",
                 exception.Message),
 
+            IdempotencyKeyRequiredException => new ExceptionMapping(
+                StatusCodes.Status400BadRequest,
+                ErrorCodes.IdempotencyKeyRequired,
+                "Idempotency key required",
+                exception.Message),
+
+            IdempotencyKeyConflictException => new ExceptionMapping(
+                StatusCodes.Status422UnprocessableEntity,
+                ErrorCodes.IdempotencyKeyConflict,
+                "Idempotency key conflict",
+                exception.Message),
+
             AccountNotFoundException => new ExceptionMapping(
                 StatusCodes.Status404NotFound,
                 ErrorCodes.AccountNotFound,
@@ -65,7 +77,7 @@ public static class ExceptionMapper
                 ErrorCodes.DatabaseBusy,
                 "Database temporarily unavailable",
                 "The database is temporarily busy. " +
-                "Verify the operation status before trying again."),
+                "Retry with the same Idempotency-Key."),
 
             _ => new ExceptionMapping(
                 StatusCodes.Status500InternalServerError,

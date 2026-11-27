@@ -17,6 +17,7 @@ public sealed class AtmServiceIntegrationTests
         return new AtmService(
             new AccountRepository(context),
             new TransactionRepository(context),
+            new IdempotencyRepository(context),
             new EfUnitOfWork(context));
     }
 

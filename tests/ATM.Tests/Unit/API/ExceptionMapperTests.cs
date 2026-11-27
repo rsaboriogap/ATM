@@ -46,6 +46,30 @@ public sealed class ExceptionMapperTests
     }
 
     [Fact]
+    public void Map_IdempotencyKeyRequired_Returns400()
+    {
+        var result = ExceptionMapper.Map(
+            new IdempotencyKeyRequiredException());
+
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal(
+            ErrorCodes.IdempotencyKeyRequired,
+            result.Code);
+    }
+
+    [Fact]
+    public void Map_IdempotencyKeyConflict_Returns422()
+    {
+        var result = ExceptionMapper.Map(
+            new IdempotencyKeyConflictException(Guid.NewGuid()));
+
+        Assert.Equal(422, result.StatusCode);
+        Assert.Equal(
+            ErrorCodes.IdempotencyKeyConflict,
+            result.Code);
+    }
+
+    [Fact]
     public void Map_InsufficientFunds_Returns409()
     {
         var result = ExceptionMapper.Map(

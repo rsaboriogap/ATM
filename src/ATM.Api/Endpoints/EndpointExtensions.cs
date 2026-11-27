@@ -2,6 +2,10 @@
 
 public static class EndpointExtensions
 {
+    // Required on every money-moving POST. A retry with the same key returns
+    // the original result instead of posting again.
+    public const string IdempotencyKeyHeader = "Idempotency-Key";
+
     public static IEndpointRouteBuilder MapAtmEndpoints(
         this IEndpointRouteBuilder app)
     {
@@ -24,6 +28,7 @@ public static class EndpointExtensions
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
         .ProducesProblem(StatusCodes.Status500InternalServerError)
         .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 }

@@ -69,7 +69,7 @@ public sealed class AtmFinancialBoundaryTests
         var accounts = await GetAccountsAsync(client);
         var account = accounts[0];
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{account.Id}/withdrawals",
             new { Amount = account.Balance + 0.01m });
 
@@ -122,7 +122,7 @@ public sealed class AtmFinancialBoundaryTests
         var historyBefore = await GetHistoryAsync(
             client, account.Id);
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{account.Id}/deposits",
             new { Amount = 0.01m });
 
@@ -158,7 +158,7 @@ public sealed class AtmFinancialBoundaryTests
         var destinationHistoryBefore = await GetHistoryAsync(
             client, destination.Id);
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {

@@ -51,6 +51,7 @@ public sealed class AtomicRollbackTests
             var service = new AtmService(
                 new AccountRepository(context),
                 new TransactionRepository(context),
+                new IdempotencyRepository(context),
                 new EfUnitOfWork(context));
 
             await Assert.ThrowsAsync<DbUpdateException>(

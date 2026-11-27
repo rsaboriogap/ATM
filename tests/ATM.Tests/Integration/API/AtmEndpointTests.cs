@@ -71,7 +71,7 @@ public sealed class AtmEndpointTests
             factory1.DatabasePath,
             factory2.DatabasePath);
 
-        var response = await client1.PostAsJsonAsync(
+        var response = await client1.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts1[0].Id}/deposits",
             new { Amount = 500m });
 
@@ -172,7 +172,7 @@ public sealed class AtmEndpointTests
         var accounts = await GetAccountsAsync(client);
         var account = accounts[0];
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{account.Id}/deposits",
             new { Amount = 150m });
 
@@ -201,7 +201,7 @@ public sealed class AtmEndpointTests
         var accounts = await GetAccountsAsync(client);
         var account = accounts[0];
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{account.Id}/withdrawals",
             new { Amount = 250m });
 
@@ -223,7 +223,7 @@ public sealed class AtmEndpointTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {
@@ -260,7 +260,7 @@ public sealed class AtmEndpointTests
         var accounts = await GetAccountsAsync(client);
         var account = accounts[0];
 
-        var depositResponse = await client.PostAsJsonAsync(
+        var depositResponse = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{account.Id}/deposits",
             new { Amount = 100m });
 
@@ -293,7 +293,7 @@ public sealed class AtmEndpointTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts[0].Id}/deposits",
             new { });
 
@@ -310,7 +310,7 @@ public sealed class AtmEndpointTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts[0].Id}/deposits",
             new { Amount = "invalid" });
 
@@ -327,7 +327,7 @@ public sealed class AtmEndpointTests
 
         var accounts = await GetAccountsAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await client.PostWithIdempotencyKeyAsync(
             "/api/transfers",
             new
             {

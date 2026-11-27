@@ -16,7 +16,7 @@ public sealed class AtmErrorContractTests : BackendTestBase
 
         var accounts = await GetAccountsAsync(client);
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await client.PostWithIdempotencyKeyAsync(
             $"/api/accounts/{accounts[0].Id}/deposits",
             new { });
 
@@ -87,6 +87,9 @@ public sealed class AtmErrorContractTests : BackendTestBase
             Content = JsonContent.Create(new { Amount = 5000m })
         };
         request.Headers.Accept.ParseAdd("text/html");
+        request.Headers.Add(
+            IdempotencyTestExtensions.IdempotencyKeyHeader,
+            Guid.NewGuid().ToString());
 
         using var response = await client.SendAsync(request);
 
@@ -107,17 +110,17 @@ public sealed class AtmErrorContractTests : BackendTestBase
         var account = accounts[0];
 
         using var missingAmount =
-            await client.PostAsJsonAsync(
+            await client.PostWithIdempotencyKeyAsync(
                 $"/api/accounts/{account.Id}/deposits",
                 new { });
 
         using var invalidAmount =
-            await client.PostAsJsonAsync(
+            await client.PostWithIdempotencyKeyAsync(
                 $"/api/accounts/{account.Id}/deposits",
                 new { Amount = -100m });
 
         using var insufficientFunds =
-            await client.PostAsJsonAsync(
+            await client.PostWithIdempotencyKeyAsync(
                 $"/api/accounts/{account.Id}/withdrawals",
                 new { Amount = 1500m });
 
