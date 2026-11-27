@@ -19,7 +19,7 @@ public sealed class AtmConcurrencyTests : BackendTestBase
         var account = accounts[0];
 
         var requests = Enumerable.Range(0, 2)
-            .Select(_ => client.PostAsJsonAsync(
+            .Select(_ => client.PostWithIdempotencyKeyAsync(
                 $"/api/accounts/{account.Id}/withdrawals",
                 new { Amount = 800m }))
             .ToArray();

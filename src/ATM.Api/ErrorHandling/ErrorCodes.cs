@@ -29,6 +29,12 @@ public static class ErrorCodes
     public const string UnsupportedMediaType =
         "unsupported_media_type";
 
+    public const string IdempotencyKeyRequired =
+        "idempotency_key_required";
+
+    public const string IdempotencyKeyConflict =
+        "idempotency_key_conflict";
+
     public const string DatabaseBusy =
         "database_busy";
 

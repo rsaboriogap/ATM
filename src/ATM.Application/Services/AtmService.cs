@@ -1,5 +1,7 @@
-﻿using ATM.Application.DTOs;
+﻿using System.Text.Json;
+using ATM.Application.DTOs;
 using ATM.Application.Exceptions;
+using ATM.Application.Idempotency;
 using ATM.Application.Interfaces;
 using ATM.Application.Interfaces.Persistence;
 using ATM.Application.Mappings;
@@ -11,17 +13,23 @@ namespace ATM.Application.Services;
 
 public sealed class AtmService : IAtmService
 {
+    private static readonly JsonSerializerOptions IdempotencyJsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
+    private readonly IIdempotencyRepository _idempotencyRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public AtmService(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
+        IIdempotencyRepository idempotencyRepository,
         IUnitOfWork unitOfWork)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
+        _idempotencyRepository = idempotencyRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -73,19 +81,30 @@ public sealed class AtmService : IAtmService
     public Task<OperationResultDto> DepositAsync(
         Guid accountId,
         decimal amount,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default) =>
         ExecuteAccountOperationAsync(
-            accountId, amount, TransactionType.Deposit, cancellationToken);
+            accountId,
+            amount,
+            TransactionType.Deposit,
+            idempotencyKey,
+            cancellationToken);
 
     public Task<OperationResultDto> WithdrawAsync(
         Guid accountId,
         decimal amount,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default) =>
         ExecuteAccountOperationAsync(
-            accountId, amount, TransactionType.Withdrawal, cancellationToken);
+            accountId,
+            amount,
+            TransactionType.Withdrawal,
+            idempotencyKey,
+            cancellationToken);
 
     public Task<TransferResultDto> TransferAsync(
         TransferRequest request,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -98,7 +117,13 @@ public sealed class AtmService : IAtmService
             throw new SameAccountTransferException();
         }
 
-        return _unitOfWork.ExecuteInTransactionAsync(
+        var fingerprint =
+            $"Transfer|{request.SourceAccountId:N}|" +
+            $"{request.DestinationAccountId:N}|{ToCents(request.Amount)}";
+
+        return ExecuteIdempotentAsync(
+            idempotencyKey,
+            fingerprint,
             async ct =>
             {
                 var source = await GetRequiredAccountForUpdateAsync(
@@ -128,15 +153,76 @@ public sealed class AtmService : IAtmService
 
     // Private helpers
 
+    // Runs the operation at most once per key. The key lookup, the ledger
+    // entries and the idempotency record share one write transaction, so they
+    // commit or roll back together. BEGIN IMMEDIATE serializes writers, so two
+    // concurrent requests with the same key can't both post.
+    private Task<T> ExecuteIdempotentAsync<T>(
+        Guid idempotencyKey,
+        string fingerprint,
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        if (idempotencyKey == Guid.Empty)
+        {
+            throw new IdempotencyKeyRequiredException();
+        }
+
+        return _unitOfWork.ExecuteInTransactionAsync(
+            async ct =>
+            {
+                var existing = await _idempotencyRepository
+                    .FindForUpdateAsync(idempotencyKey, ct);
+
+                if (existing is not null)
+                {
+                    if (existing.Fingerprint != fingerprint)
+                    {
+                        throw new IdempotencyKeyConflictException(
+                            idempotencyKey);
+                    }
+
+                    // Replay: return the original result, write nothing.
+                    return JsonSerializer.Deserialize<T>(
+                        existing.ResponseJson,
+                        IdempotencyJsonOptions)
+                        ?? throw new InvalidOperationException(
+                            "Stored idempotent response is empty.");
+                }
+
+                var result = await operation(ct);
+
+                _idempotencyRepository.Add(new IdempotencyRecord(
+                    idempotencyKey,
+                    fingerprint,
+                    JsonSerializer.Serialize(
+                        result,
+                        IdempotencyJsonOptions)));
+
+                return result;
+            },
+            cancellationToken);
+    }
+
+    // Amounts are validated to 2 decimals; cents make 100m and 100.00m equal.
+    private static long ToCents(decimal amount) =>
+        decimal.ToInt64(amount * 100m);
+
     private Task<OperationResultDto> ExecuteAccountOperationAsync(
         Guid accountId,
         decimal amount,
         TransactionType transactionType,
+        Guid idempotencyKey,
         CancellationToken cancellationToken)
     {
         MoneyRules.ValidateAmount(amount);
 
-        return _unitOfWork.ExecuteInTransactionAsync(
+        var fingerprint =
+            $"{transactionType}|{accountId:N}|{ToCents(amount)}";
+
+        return ExecuteIdempotentAsync(
+            idempotencyKey,
+            fingerprint,
             async ct =>
             {
                 var account =

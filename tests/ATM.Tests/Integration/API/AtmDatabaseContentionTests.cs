@@ -39,7 +39,7 @@ public sealed class AtmDatabaseContentionTests
             try
             {
                 using var response =
-                    await client.PostAsJsonAsync(
+                    await client.PostWithIdempotencyKeyAsync(
                         $"/api/accounts/{account.Id}/deposits",
                         new { Amount = 100m });
 

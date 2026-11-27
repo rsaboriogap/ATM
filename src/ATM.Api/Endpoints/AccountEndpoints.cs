@@ -2,6 +2,7 @@
 using ATM.Application.DTOs;
 using ATM.Application.Interfaces;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ATM.Api.Endpoints;
 
@@ -67,12 +68,16 @@ public static class AccountEndpoints
         DepositAsync(
             Guid id,
             AmountRequest request,
+            [FromHeader(Name = EndpointExtensions.IdempotencyKeyHeader)]
+            Guid? idempotencyKey,
             IAtmService service,
             CancellationToken cancellationToken)
     {
+        // A missing key becomes Guid.Empty, which the service rejects.
         var result = await service.DepositAsync(
             id,
             request.Amount!.Value,
+            idempotencyKey ?? Guid.Empty,
             cancellationToken);
 
         return TypedResults.Ok(result);
@@ -82,12 +87,15 @@ public static class AccountEndpoints
         WithdrawAsync(
             Guid id,
             AmountRequest request,
+            [FromHeader(Name = EndpointExtensions.IdempotencyKeyHeader)]
+            Guid? idempotencyKey,
             IAtmService service,
             CancellationToken cancellationToken)
     {
         var result = await service.WithdrawAsync(
             id,
             request.Amount!.Value,
+            idempotencyKey ?? Guid.Empty,
             cancellationToken);
 
         return TypedResults.Ok(result);
