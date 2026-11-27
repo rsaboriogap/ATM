@@ -1,5 +1,6 @@
 ﻿using ATM.Application.DTOs;
 using ATM.Application.Exceptions;
+using ATM.Application.Idempotency;
 using ATM.Application.Interfaces.Persistence;
 using ATM.Application.Services;
 using ATM.Domain.Entities;
@@ -19,6 +20,9 @@ public sealed class AtmServiceTests
 
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
+    // Default Moq behaviour: FindForUpdateAsync returns null (key not seen).
+    private readonly Mock<IIdempotencyRepository> _idempotency = new();
+
     private readonly AtmService _service;
 
     public AtmServiceTests()
@@ -29,6 +33,7 @@ public sealed class AtmServiceTests
         _service = new AtmService(
             _accounts.Object,
             _transactions.Object,
+            _idempotency.Object,
             _unitOfWork.Object);
     }
 
@@ -306,6 +311,105 @@ public sealed class AtmServiceTests
 
         Assert.Equal(1000m, source.Balance);
         Assert.Equal(1_000_000_000m, destination.Balance);
+    }
+
+    [Fact]
+    public async Task Deposit_NewKey_StoresIdempotencyRecord()
+    {
+        var account = CreateAccount("Checking");
+        var key = Guid.NewGuid();
+
+        await _service.DepositAsync(account.Id, 150m, key);
+
+        _idempotency.Verify(repository => repository.Add(
+            It.Is<IdempotencyRecord>(r =>
+                r.Key == key &&
+                r.Fingerprint == $"Deposit|{account.Id:N}|15000")),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Deposit_EmptyKey_DoesNotStartTransaction()
+    {
+        var account = CreateAccount("Checking");
+
+        await Assert.ThrowsAsync<IdempotencyKeyRequiredException>(
+            () => _service.DepositAsync(account.Id, 150m, Guid.Empty));
+
+        _unitOfWork.Verify(uow =>
+            uow.ExecuteInTransactionAsync<OperationResultDto>(
+                It.IsAny<Func<CancellationToken,
+                    Task<OperationResultDto>>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Deposit_ReplayedKey_ReturnsStoredResultWithoutPosting()
+    {
+        var account = CreateAccount("Checking");
+        var key = Guid.NewGuid();
+
+        // First call captures the stored record.
+        IdempotencyRecord? stored = null;
+        _idempotency
+            .Setup(repository => repository.Add(It.IsAny<IdempotencyRecord>()))
+            .Callback<IdempotencyRecord>(record => stored = record);
+
+        var original = await _service.DepositAsync(account.Id, 150m, key);
+
+        _idempotency
+            .Setup(repository => repository.FindForUpdateAsync(
+                key,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => stored);
+
+        var replay = await _service.DepositAsync(account.Id, 150m, key);
+
+        Assert.Equal(original, replay);
+        Assert.Equal(1150m, account.Balance);
+
+        _transactions.Verify(
+            repository => repository.Add(It.IsAny<Transaction>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Withdraw_KeyUsedForDifferentRequest_ThrowsConflict()
+    {
+        var account = CreateAccount("Checking");
+        var key = Guid.NewGuid();
+
+        _idempotency
+            .Setup(repository => repository.FindForUpdateAsync(
+                key,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyRecord(
+                key,
+                $"Deposit|{account.Id:N}|15000",
+                "{}"));
+
+        await Assert.ThrowsAsync<IdempotencyKeyConflictException>(
+            () => _service.WithdrawAsync(account.Id, 150m, key));
+
+        Assert.Equal(1000m, account.Balance);
+
+        _transactions.Verify(
+            repository => repository.Add(It.IsAny<Transaction>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Withdraw_InsufficientFunds_DoesNotStoreKey()
+    {
+        var account = CreateAccount("Checking");
+
+        await Assert.ThrowsAsync<InsufficientFundsException>(
+            () => _service.WithdrawAsync(account.Id, 1500m, Guid.NewGuid()));
+
+        _idempotency.Verify(
+            repository => repository.Add(It.IsAny<IdempotencyRecord>()),
+            Times.Never);
     }
 
     [Fact]

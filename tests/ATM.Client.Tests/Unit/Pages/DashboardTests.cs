@@ -198,6 +198,7 @@ public sealed class DashboardTests : BunitContext
             .Setup(api => api.DepositAsync(
                 _checking.Id,
                 new DepositRequest(150m),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 new OperationResultDto(
@@ -238,6 +239,7 @@ public sealed class DashboardTests : BunitContext
             .Setup(api => api.DepositAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<DepositRequest>(),
+                It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(
                 new ApiException(

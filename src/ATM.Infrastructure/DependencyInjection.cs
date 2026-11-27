@@ -39,6 +39,10 @@ public static class DependencyInjection
             TransactionRepository>();
 
         services.AddScoped<
+            IIdempotencyRepository,
+            IdempotencyRepository>();
+
+        services.AddScoped<
             IUnitOfWork,
             EfUnitOfWork>();
 

@@ -98,4 +98,35 @@ public sealed class AlertTests : BunitContext
             "Transaction status uncertain",
             component.Markup);
     }
+
+    [Fact]
+    public void ReconciliationAlert_WithoutRetry_HidesRetryButton()
+    {
+        var component = Render<ReconciliationAlert>(
+            parameters => parameters
+                .Add(p => p.Visible, true)
+                .Add(p => p.CanRetry, false));
+
+        Assert.Empty(component.FindAll(
+            "[data-testid=retry-pending-button]"));
+    }
+
+    [Fact]
+    public void ReconciliationAlert_CanRetry_InvokesRetry()
+    {
+        var retried = false;
+
+        var component = Render<ReconciliationAlert>(
+            parameters => parameters
+                .Add(p => p.Visible, true)
+                .Add(p => p.CanRetry, true)
+                .Add(p => p.OnRetry, () =>
+                {
+                    retried = true;
+                }));
+
+        component.Find("[data-testid=retry-pending-button]").Click();
+
+        Assert.True(retried);
+    }
 }

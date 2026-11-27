@@ -120,6 +120,36 @@ public sealed class CorsTests
     }
 
     [Fact]
+    public async Task Preflight_AllowsIdempotencyKeyHeader()
+    {
+        await using var factory = new AtmApiFactory();
+        using var client = CreateClient(factory);
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Options,
+            "/api/transfers");
+
+        request.Headers.Add("Origin", AllowedOrigin);
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add(
+            "Access-Control-Request-Headers",
+            "content-type,idempotency-key");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        Assert.True(response.Headers.TryGetValues(
+            "Access-Control-Allow-Headers",
+            out var headers));
+
+        Assert.Contains(
+            "idempotency-key",
+            string.Join(",", headers!),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Preflight_DisallowedOrigin_OmitsCorsHeader()
     {
         await using var factory = new AtmApiFactory();
@@ -161,6 +191,10 @@ public sealed class CorsTests
         request.Headers.Add(
             "Origin",
             AllowedOrigin);
+
+        request.Headers.Add(
+            IdempotencyTestExtensions.IdempotencyKeyHeader,
+            Guid.NewGuid().ToString());
 
         request.Content = JsonContent.Create(
             new { Amount = 1500m });
