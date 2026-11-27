@@ -35,13 +35,13 @@ public sealed class TransactionRepositoryTests
 
         Assert.Equal(
             0,
-            await verificationContext.Transactions.CountAsync());
+            await verificationContext.ActivityTransactions().CountAsync());
 
         await context.SaveChangesAsync();
 
         Assert.Equal(
             1,
-            await verificationContext.Transactions.CountAsync());
+            await verificationContext.ActivityTransactions().CountAsync());
     }
 
     [Fact]
@@ -75,10 +75,15 @@ public sealed class TransactionRepositoryTests
             await repository.GetByAccountIdAsync(
                 accounts[0].Id);
 
-        Assert.Single(transactions);
+        // Opening balance + the deposit above, both for this account only.
+        Assert.Equal(2, transactions.Count);
 
-        Assert.Equal(
-            accounts[0].Id,
-            transactions[0].AccountId);
+        Assert.All(
+            transactions,
+            t => Assert.Equal(accounts[0].Id, t.AccountId));
+
+        Assert.Single(
+            transactions,
+            t => t.Type == TransactionType.Deposit);
     }
 }

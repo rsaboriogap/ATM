@@ -143,37 +143,55 @@ public sealed class AtmDbContextTests
     [Fact]
     public async Task InitializeDatabase_MultipleTimes_DoesNotResetAccounts()
     {
-        await using var connection =
-            new SqliteConnection("Data Source=:memory:");
+        // The initializer requires a file-backed WAL database, so this
+        // cannot use an in-memory connection.
+        await using var database = new SqliteTestDatabase();
 
-        await connection.OpenAsync();
+        await database.InitializeAsync();
 
-        var options = new DbContextOptionsBuilder<AtmDbContext>()
-            .UseSqlite(connection)
-            .Options;
+        await using (var context = database.CreateContext())
+        {
+            var account = await context.Accounts
+                .SingleAsync(a => a.Name == "Checking");
 
-        await using var context = new AtmDbContext(options);
+            account.Deposit(250m);
 
-        var initializer = new DatabaseInitializer(context);
+            // Record the deposit in the ledger so reconciliation on the
+            // second initialization sees a consistent balance.
+            context.Transactions.Add(
+                Transaction.Create(
+                    account.Id,
+                    TransactionType.Deposit,
+                    250m,
+                    account.Balance));
 
-        await initializer.InitializeAsync();
+            await context.SaveChangesAsync();
+        }
 
-        var account = await context.Accounts
-            .SingleAsync(a => a.Name == "Checking");
+        await database.InitializeAsync();
 
-        account.Deposit(250m);
+        await using var verification = database.CreateContext();
 
-        await context.SaveChangesAsync();
+        Assert.Equal(2, await verification.Accounts.CountAsync());
 
-        await initializer.InitializeAsync();
-
-        context.ChangeTracker.Clear();
-
-        Assert.Equal(2, await context.Accounts.CountAsync());
-
-        var savedAccount = await context.Accounts
+        var savedAccount = await verification.Accounts
             .SingleAsync(a => a.Name == "Checking");
 
         Assert.Equal(1250m, savedAccount.Balance);
+
+        // Re-running the initializer must not seed a second opening entry.
+        var openingEntries = await verification.Transactions
+            .Where(t => t.Type == TransactionType.OpeningBalance)
+            .ToListAsync();
+
+        Assert.Equal(2, openingEntries.Count);
+
+        Assert.Equal(
+            2,
+            openingEntries.Select(t => t.AccountId).Distinct().Count());
+
+        Assert.All(
+            openingEntries,
+            t => Assert.Equal(1000m, t.Amount));
     }
 }

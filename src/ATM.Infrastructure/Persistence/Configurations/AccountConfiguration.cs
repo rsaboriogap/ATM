@@ -16,7 +16,7 @@ public sealed class AccountConfiguration
         {
             table.HasCheckConstraint(
                 "CK_Accounts_Balance",
-                "\"Balance\" BETWEEN 0 AND 100000000000");
+                "typeof(\"Balance\") = 'integer' AND \"Balance\" BETWEEN 0 AND 100000000000");
 
             table.HasCheckConstraint(
                 "CK_Accounts_Currency",

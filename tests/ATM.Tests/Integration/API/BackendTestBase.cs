@@ -39,7 +39,24 @@ public abstract class BackendTestBase
                 "Account response was empty.");
     }
 
+    /// <summary>
+    /// Returns customer-initiated transactions only. Seeded accounts carry an
+    /// OpeningBalance ledger entry, which is excluded so tests can assert on
+    /// the operations they perform. Use <see cref="GetLedgerAsync"/> for the
+    /// full ledger.
+    /// </summary>
     protected static async Task<TransactionDto[]> GetHistoryAsync(
+        HttpClient client,
+        Guid accountId)
+    {
+        var ledger = await GetLedgerAsync(client, accountId);
+
+        return ledger
+            .Where(t => t.Type != OpeningBalanceType)
+            .ToArray();
+    }
+
+    protected static async Task<TransactionDto[]> GetLedgerAsync(
         HttpClient client,
         Guid accountId)
     {
@@ -48,6 +65,8 @@ public abstract class BackendTestBase
             ?? throw new InvalidOperationException(
                 "Transaction history was empty.");
     }
+
+    protected const string OpeningBalanceType = "OpeningBalance";
 
     protected static async Task<OperationResultDto> DepositAsync(
         HttpClient client,

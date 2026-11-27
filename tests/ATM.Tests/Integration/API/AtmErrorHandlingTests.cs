@@ -207,7 +207,11 @@ public sealed class AtmErrorHandlingTests
                     $"/api/accounts/{account.Id}/transactions");
 
             Assert.NotNull(history);
-            Assert.Empty(history);
+
+            // Only the seeded OpeningBalance entry may exist.
+            Assert.DoesNotContain(
+                history,
+                t => t.Type != "OpeningBalance");
         }
     }
 

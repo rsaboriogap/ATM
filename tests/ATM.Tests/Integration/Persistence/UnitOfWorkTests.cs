@@ -55,7 +55,7 @@ public sealed class UnitOfWorkTests
 
         Assert.Equal(
             1,
-            await verification.Transactions.CountAsync());
+            await verification.ActivityTransactions().CountAsync());
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class UnitOfWorkTests
 
         Assert.Equal(
             0,
-            await verification.Transactions.CountAsync());
+            await verification.ActivityTransactions().CountAsync());
 
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -157,7 +157,7 @@ public sealed class UnitOfWorkTests
 
         Assert.Equal(
             0,
-            await verification.Transactions.CountAsync());
+            await verification.ActivityTransactions().CountAsync());
 
         Assert.Empty(context.ChangeTracker.Entries());
     }

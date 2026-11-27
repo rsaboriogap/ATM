@@ -106,6 +106,6 @@ public sealed class ConcurrencyTests
 
         Assert.Equal(
             1,
-            await verification.Transactions.CountAsync());
+            await verification.ActivityTransactions().CountAsync());
     }
 }

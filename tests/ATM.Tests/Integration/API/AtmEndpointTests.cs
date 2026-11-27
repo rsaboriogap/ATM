@@ -105,12 +105,19 @@ public sealed class AtmEndpointTests
 
         foreach (var account in accounts)
         {
-            var history = await client
+            // A clean database holds exactly one OpeningBalance entry per
+            // account, matching the seeded balance, and nothing else.
+            var ledger = await client
                 .GetFromJsonAsync<TransactionDto[]>(
                     $"/api/accounts/{account.Id}/transactions");
 
-            Assert.NotNull(history);
-            Assert.Empty(history);
+            Assert.NotNull(ledger);
+
+            var opening = Assert.Single(ledger);
+
+            Assert.Equal("OpeningBalance", opening.Type);
+            Assert.Equal(1000m, opening.Amount);
+            Assert.Equal(1000m, opening.BalanceAfter);
         }
     }
 
@@ -268,10 +275,14 @@ public sealed class AtmEndpointTests
             .ReadFromJsonAsync<TransactionDto[]>();
 
         Assert.NotNull(history);
-        Assert.Single(history);
+        Assert.Equal(2, history.Length);
 
-        Assert.Equal("Deposit", history[0].Type);
-        Assert.Equal(1100m, history[0].BalanceAfter);
+        Assert.Single(history, t => t.Type == "OpeningBalance");
+
+        var deposit = Assert.Single(
+            history, t => t.Type == "Deposit");
+
+        Assert.Equal(1100m, deposit.BalanceAfter);
     }
 
     [Fact]

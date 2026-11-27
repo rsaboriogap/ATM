@@ -50,6 +50,12 @@ public sealed class Transaction
         MoneyRules.ValidateAmount(amount);
         MoneyRules.ValidateBalance(balanceAfter);
 
+        if (type == TransactionType.OpeningBalance && amount != balanceAfter)
+        {
+            throw new ArgumentException(
+                "Opening balance amount must match BalanceAfter.", nameof(balanceAfter));
+        }
+
         var isTransfer =
             type is TransactionType.TransferIn
                  or TransactionType.TransferOut;

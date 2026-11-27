@@ -48,8 +48,10 @@ public sealed class AtmServiceIntegrationTests
         var account = await verificationService
             .GetAccountAsync(checking.Id);
 
-        var history = await verificationService
-            .GetTransactionHistoryAsync(checking.Id);
+        var history = (await verificationService
+            .GetTransactionHistoryAsync(checking.Id))
+            .Where(t => t.Type != "OpeningBalance")
+            .ToArray();
 
         Assert.Equal(1150m, account.Balance);
         Assert.Single(history);
@@ -83,8 +85,10 @@ public sealed class AtmServiceIntegrationTests
         var account = await verificationService
             .GetAccountAsync(checking.Id);
 
-        var history = await verificationService
-            .GetTransactionHistoryAsync(checking.Id);
+        var history = (await verificationService
+            .GetTransactionHistoryAsync(checking.Id))
+            .Where(t => t.Type != "OpeningBalance")
+            .ToArray();
 
         Assert.Equal(750m, account.Balance);
         Assert.Single(history);
@@ -172,7 +176,7 @@ public sealed class AtmServiceIntegrationTests
             account => Assert.Equal(1000m, account.Balance));
 
         Assert.Empty(
-            await verification.Transactions.ToListAsync());
+            await verification.ActivityTransactions().ToListAsync());
     }
 
     [Fact]

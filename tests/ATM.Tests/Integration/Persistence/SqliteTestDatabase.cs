@@ -1,6 +1,7 @@
 ﻿using ATM.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace ATM.Tests.Integration.Persistence;
 
 internal sealed class SqliteTestDatabase : IAsyncDisposable
@@ -28,7 +29,11 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
     {
         await using var context = CreateContext();
 
-        var initializer = new DatabaseInitializer(context);
+        var reconciliationService = new LedgerReconciliationService(context);
+
+        var initializer = new DatabaseInitializer(
+            context,
+            reconciliationService);
 
         await initializer.InitializeAsync();
     }

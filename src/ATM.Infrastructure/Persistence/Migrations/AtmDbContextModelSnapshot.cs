@@ -47,7 +47,7 @@ namespace ATM.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Accounts", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Accounts_Balance", "\"Balance\" BETWEEN 0 AND 100000000000");
+                            t.HasCheckConstraint("CK_Accounts_Balance", "typeof(\"Balance\") = 'integer' AND \"Balance\" BETWEEN 0 AND 100000000000");
 
                             t.HasCheckConstraint("CK_Accounts_Currency", "\"Currency\" = 'USD'");
                         });
@@ -78,19 +78,26 @@ namespace ATM.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Transactions_OpeningBalance")
+                        .HasFilter("\"Type\" = 5");
+
                     b.HasIndex("ReferenceId");
 
                     b.HasIndex("AccountId", "CreatedAt");
 
                     b.ToTable("Transactions", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Transactions_Amount", "\"Amount\" BETWEEN 1 AND 100000000");
+                            t.HasCheckConstraint("CK_Transactions_Amount", "typeof(\"Amount\") = 'integer' AND \"Amount\" BETWEEN 1 AND 100000000");
 
-                            t.HasCheckConstraint("CK_Transactions_BalanceAfter", "\"BalanceAfter\" BETWEEN 0 AND 100000000000");
+                            t.HasCheckConstraint("CK_Transactions_BalanceAfter", "typeof(\"BalanceAfter\") = 'integer' AND \"BalanceAfter\" BETWEEN 0 AND 100000000000");
 
-                            t.HasCheckConstraint("CK_Transactions_ReferenceId", "(\r\n    (\"Type\" IN (3, 4)\r\n        AND \"ReferenceId\" IS NOT NULL)\r\n    OR\r\n    (\"Type\" IN (1, 2)\r\n        AND \"ReferenceId\" IS NULL)\r\n)");
+                            t.HasCheckConstraint("CK_Transactions_OpeningBalance", "\"Type\" <> 5 OR \"Amount\" = \"BalanceAfter\"");
 
-                            t.HasCheckConstraint("CK_Transactions_Type", "\"Type\" IN (1, 2, 3, 4)");
+                            t.HasCheckConstraint("CK_Transactions_ReferenceId", "(\r\n    (\"Type\" IN (3, 4)\r\n        AND \"ReferenceId\" IS NOT NULL)\r\n    OR\r\n    (\"Type\" IN (1, 2, 5)\r\n        AND \"ReferenceId\" IS NULL)\r\n)");
+
+                            t.HasCheckConstraint("CK_Transactions_Type", "\"Type\" IN (1, 2, 3, 4, 5)");
                         });
                 });
 

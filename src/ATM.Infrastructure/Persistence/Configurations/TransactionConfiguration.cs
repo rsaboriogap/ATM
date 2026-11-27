@@ -15,27 +15,23 @@ public sealed class TransactionConfiguration
         {
             table.HasCheckConstraint(
                 "CK_Transactions_Amount",
-                "\"Amount\" BETWEEN 1 AND 100000000");
+                "typeof(\"Amount\") = 'integer' AND \"Amount\" BETWEEN 1 AND 100000000");
 
             table.HasCheckConstraint(
                 "CK_Transactions_BalanceAfter",
-                "\"BalanceAfter\" BETWEEN 0 AND 100000000000");
+                "typeof(\"BalanceAfter\") = 'integer' AND \"BalanceAfter\" BETWEEN 0 AND 100000000000");
 
             table.HasCheckConstraint(
                 "CK_Transactions_Type",
-                "\"Type\" IN (1, 2, 3, 4)");
+                "\"Type\" IN (1, 2, 3, 4, 5)");
 
             table.HasCheckConstraint(
                 "CK_Transactions_ReferenceId",
-                """
-                (
-                    ("Type" IN (3, 4)
-                        AND "ReferenceId" IS NOT NULL)
-                    OR
-                    ("Type" IN (1, 2)
-                        AND "ReferenceId" IS NULL)
-                )
-                """);
+                "(\r\n    (\"Type\" IN (3, 4)\r\n        AND \"ReferenceId\" IS NOT NULL)\r\n    OR\r\n    (\"Type\" IN (1, 2, 5)\r\n        AND \"ReferenceId\" IS NULL)\r\n)");
+
+            table.HasCheckConstraint(
+                "CK_Transactions_OpeningBalance",
+                "\"Type\" <> 5 OR \"Amount\" = \"BalanceAfter\"");
         });
 
         builder.HasKey(transaction => transaction.Id);
@@ -82,5 +78,10 @@ public sealed class TransactionConfiguration
         });
 
         builder.HasIndex(transaction => transaction.ReferenceId);
+
+        builder.HasIndex(transaction => transaction.AccountId)
+        .IsUnique()
+        .HasFilter("\"Type\" = 5")
+        .HasDatabaseName("UX_Transactions_OpeningBalance");
     }
 }

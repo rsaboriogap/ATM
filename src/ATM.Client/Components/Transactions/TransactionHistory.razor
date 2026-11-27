@@ -68,7 +68,7 @@
                             </td>
 
                             <td class="@GetAmountClass(
-                                                                transaction.Type)">
+                                                                                                transaction.Type)">
 
                                 @GetAmount(transaction)
 
@@ -110,15 +110,17 @@
             "Withdrawal" => "Withdrawal",
             "TransferIn" => "Transfer received",
             "TransferOut" => "Transfer sent",
+            "OpeningBalance" => "Opening balance",
             _ => type
         };
     }
 
-    private static string GetAmount(TransactionDto transaction)
+    private static string GetAmount(
+     TransactionDto transaction)
     {
         return transaction.Type switch
         {
-            "Deposit" or "TransferIn" =>
+            "Deposit" or "TransferIn" or "OpeningBalance" =>
                 MoneyFormatter.FormatSigned(
                     transaction.Amount, true),
 
@@ -134,7 +136,7 @@
     {
         return type switch
         {
-            "Deposit" or "TransferIn" =>
+            "Deposit" or "TransferIn" or "OpeningBalance" =>
                 "text-end transaction-credit",
 
             "Withdrawal" or "TransferOut" =>

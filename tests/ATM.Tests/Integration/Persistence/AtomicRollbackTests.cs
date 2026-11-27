@@ -77,6 +77,6 @@ public sealed class AtomicRollbackTests
 
         Assert.Equal(
             0,
-            await verification.Transactions.CountAsync());
+            await verification.ActivityTransactions().CountAsync());
     }
 }

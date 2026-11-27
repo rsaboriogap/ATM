@@ -1,5 +1,6 @@
 ﻿using ATM.Application.Interfaces.Persistence;
 using ATM.Infrastructure.Persistence;
+using ATM.Infrastructure.Persistence.Interceptors;
 using ATM.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,10 +19,14 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "AtmDatabase connection string is missing.");
 
-        services.AddDbContext<AtmDbContext>(options =>
+        services.AddSingleton<SqliteConnectionInterceptor>();
+        services.AddDbContext<AtmDbContext>((provider, options) =>
         {
             options.UseSqlite(connectionString);
+            options.AddInterceptors(provider.GetRequiredService<SqliteConnectionInterceptor>());
         });
+
+        services.AddScoped<ILedgerReconciliationService, LedgerReconciliationService>();
 
         services.AddScoped<DatabaseInitializer>();
 
