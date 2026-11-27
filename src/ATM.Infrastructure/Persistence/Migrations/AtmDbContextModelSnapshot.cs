@@ -35,6 +35,9 @@ namespace ATM.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("USD");
 
+                    b.Property<long>("LedgerSequence")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -73,6 +76,9 @@ namespace ATM.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ReferenceId")
                         .HasColumnType("TEXT");
 
+                    b.Property<long>("Sequence")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -86,6 +92,10 @@ namespace ATM.Infrastructure.Persistence.Migrations
                     b.HasIndex("ReferenceId");
 
                     b.HasIndex("AccountId", "CreatedAt");
+
+                    b.HasIndex("AccountId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Transactions_AccountSequence");
 
                     b.ToTable("Transactions", null, t =>
                         {

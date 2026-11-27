@@ -66,14 +66,7 @@ public sealed class ConcurrencyTests
                             await Task.Delay(200, ct);
                         }
 
-                        account!.Withdraw(800m);
-
-                        transactions.Add(
-                            Transaction.Create(
-                                account.Id,
-                                TransactionType.Withdrawal,
-                                800m,
-                                account.Balance));
+                        transactions.Add(account!.Withdraw(800m));
 
                         return true;
                     });

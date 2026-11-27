@@ -65,10 +65,13 @@ public sealed class DatabaseInitializer
             if (await Scalar("PRAGMA foreign_key_check;") is not null)
                 throw new InvalidOperationException("SQLite foreign key violations detected.");
             var triggerCount = Convert.ToInt32(await Scalar("""
-                SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'Transactions'
-                    AND name IN ('TR_Transactions_PreventUpdate', 'TR_Transactions_PreventDelete', 'TR_Transactions_PreventReplace');
+                SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'
+                    AND name IN ('TR_Transactions_PreventUpdate', 'TR_Transactions_PreventDelete',
+                                 'TR_Transactions_PreventReplace', 'TR_Transactions_EnforceSequence',
+                                 'TR_Transactions_EnforceRunningBalance', 'TR_Transactions_SyncAccountBalance',
+                                 'TR_Accounts_BalanceFollowsLedger');
                 """));
-            if (triggerCount != 3)
+            if (triggerCount != 7)
                 throw new InvalidOperationException("Append-Only Ledger triggers are missing. Apply the restore migration before starting the API.");
         }
         finally
@@ -79,10 +82,8 @@ public sealed class DatabaseInitializer
 
     private void CreateAccountWithOpeningBalance(string name, decimal initialBalance)
     {
-        var account = Account.Create(name, initialBalance);
-        var openingTransaction = Transaction.Create(account.Id, TransactionType.OpeningBalance,
-            initialBalance, account.Balance);
+        var (account, openingEntry) = Account.Open(name, initialBalance);
         _context.Accounts.Add(account);
-        _context.Transactions.Add(openingTransaction);
+        _context.Transactions.Add(openingEntry);
     }
 }

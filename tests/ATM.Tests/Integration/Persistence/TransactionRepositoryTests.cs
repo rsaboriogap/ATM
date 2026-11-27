@@ -23,12 +23,7 @@ public sealed class TransactionRepositoryTests
 
         var repository = new TransactionRepository(context);
 
-        repository.Add(
-            Transaction.Create(
-                account.Id,
-                TransactionType.Deposit,
-                100m,
-                1100m));
+        repository.Add(account.Deposit(100m));
 
         await using var verificationContext =
             database.CreateContext();
@@ -59,14 +54,7 @@ public sealed class TransactionRepositoryTests
 
         foreach (var account in accounts)
         {
-            account.Deposit(100m);
-
-            repository.Add(
-                Transaction.Create(
-                    account.Id,
-                    TransactionType.Deposit,
-                    100m,
-                    account.Balance));
+            repository.Add(account.Deposit(100m));
         }
 
         await context.SaveChangesAsync();
@@ -85,5 +73,38 @@ public sealed class TransactionRepositoryTests
         Assert.Single(
             transactions,
             t => t.Type == TransactionType.Deposit);
+    }
+
+    [Fact]
+    public async Task GetByAccountIdAsync_OrdersByLedgerSequenceDescending()
+    {
+        await using var database = new SqliteTestDatabase();
+
+        await database.InitializeAsync();
+
+        await using var context = database.CreateContext();
+
+        var account = await context.Accounts
+            .AsTracking()
+            .FirstAsync();
+
+        var repository = new TransactionRepository(context);
+
+        // One entry per SaveChanges: EF does not guarantee insert order within a batch.
+        repository.Add(account.Deposit(100m));
+        await context.SaveChangesAsync();
+        repository.Add(account.Withdraw(40m));
+        await context.SaveChangesAsync();
+
+        var transactions =
+            await repository.GetByAccountIdAsync(account.Id);
+
+        Assert.Equal(
+            new long[] { 3, 2, 1 },
+            transactions.Select(t => t.Sequence));
+
+        Assert.Equal(
+            new[] { TransactionType.Withdrawal, TransactionType.Deposit, TransactionType.OpeningBalance },
+            transactions.Select(t => t.Type));
     }
 }

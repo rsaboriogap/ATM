@@ -12,7 +12,8 @@
     Disabled="@Disabled"
     IsWithdrawal="true"
     SubmitLabel="Confirm withdrawal"
-    OnSubmit="@OnSubmit" />
+    OnSubmit="@OnSubmit"
+    OnAccountChanged="@OnAccountChanged" />
 
 @code {
     [Parameter]
@@ -28,4 +29,7 @@
     [Parameter]
     public EventCallback<(Guid AccountId, decimal Amount)>
         OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnAccountChanged { get; set; }
 }

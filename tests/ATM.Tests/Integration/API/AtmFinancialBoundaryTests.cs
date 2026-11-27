@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using ATM.Api.ErrorHandling;
+using ATM.Domain.Rules;
 using ATM.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -118,6 +119,9 @@ public sealed class AtmFinancialBoundaryTests
         await SetBalanceAsync(
             factory, account.Id, 1_000_000_000m);
 
+        var historyBefore = await GetHistoryAsync(
+            client, account.Id);
+
         using var response = await client.PostAsJsonAsync(
             $"/api/accounts/{account.Id}/deposits",
             new { Amount = 0.01m });
@@ -132,8 +136,9 @@ public sealed class AtmFinancialBoundaryTests
 
         Assert.Equal(1_000_000_000m, persisted.Balance);
 
-        Assert.Empty(
-            await GetHistoryAsync(client, account.Id));
+        Assert.Equal(
+            historyBefore.Length,
+            (await GetHistoryAsync(client, account.Id)).Length);
     }
 
     [Fact]
@@ -149,6 +154,9 @@ public sealed class AtmFinancialBoundaryTests
 
         await SetBalanceAsync(
             factory, destination.Id, 1_000_000_000m);
+
+        var destinationHistoryBefore = await GetHistoryAsync(
+            client, destination.Id);
 
         using var response = await client.PostAsJsonAsync(
             "/api/transfers",
@@ -179,8 +187,9 @@ public sealed class AtmFinancialBoundaryTests
         Assert.Empty(
             await GetHistoryAsync(client, source.Id));
 
-        Assert.Empty(
-            await GetHistoryAsync(client, destination.Id));
+        Assert.Equal(
+            destinationHistoryBefore.Length,
+            (await GetHistoryAsync(client, destination.Id)).Length);
     }
 
     [Fact]
@@ -209,6 +218,11 @@ public sealed class AtmFinancialBoundaryTests
         Assert.Equal(0.10m, history.Sum(t => t.Amount));
     }
 
+    /// <summary>
+    /// Raises the balance to <paramref name="balance"/> through real deposit
+    /// ledger entries. Accounts.Balance can no longer be written directly:
+    /// the database only lets it follow the ledger.
+    /// </summary>
     private static async Task SetBalanceAsync(
         AtmApiFactory factory,
         Guid accountId,
@@ -220,13 +234,29 @@ public sealed class AtmFinancialBoundaryTests
         var context = scope.ServiceProvider
             .GetRequiredService<AtmDbContext>();
 
-        var affectedRows = await context.Accounts
-            .Where(a => a.Id == accountId)
-            .ExecuteUpdateAsync(setters =>
-                setters.SetProperty(
-                    a => a.Balance,
-                    balance));
+        // One commit for all entries keeps the setup fast.
+        await using var transaction =
+            await context.Database.BeginTransactionAsync();
 
-        Assert.Equal(1, affectedRows);
+        var account = await context.Accounts
+            .AsTracking()
+            .SingleAsync(a => a.Id == accountId);
+
+        Assert.True(balance >= account.Balance);
+
+        while (account.Balance < balance)
+        {
+            var amount = Math.Min(
+                MoneyRules.MaximumAmount,
+                balance - account.Balance);
+
+            // One entry per account per SaveChanges: EF does not guarantee
+            // insert order within a batch, and each entry must be the next Sequence.
+            context.Transactions.Add(account.Deposit(amount));
+
+            await context.SaveChangesAsync();
+        }
+
+        await transaction.CommitAsync();
     }
 }

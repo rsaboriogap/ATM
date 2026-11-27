@@ -25,9 +25,10 @@ public sealed class AtmDbContextTests
 
         await context.Database.EnsureCreatedAsync();
 
-        var account = Account.Create("Checking", 1250.75m);
+        var (account, openingEntry) = Account.Open("Checking", 1250.75m);
 
         context.Accounts.Add(account);
+        context.Transactions.Add(openingEntry);
 
         await context.SaveChangesAsync();
 
@@ -57,8 +58,10 @@ public sealed class AtmDbContextTests
 
         await context.Database.EnsureCreatedAsync();
 
-        context.Accounts.Add(
-            Account.Create("Checking", 1250.75m));
+        var (account, openingEntry) = Account.Open("Checking", 1250.75m);
+
+        context.Accounts.Add(account);
+        context.Transactions.Add(openingEntry);
 
         await context.SaveChangesAsync();
 
@@ -87,17 +90,15 @@ public sealed class AtmDbContextTests
 
         await context.Database.EnsureCreatedAsync();
 
-        var account = Account.Create("Checking", 1000m);
-
-        account.Deposit(150m);
-
-        var transaction = Transaction.Create(
-            account.Id,
-            TransactionType.Deposit,
-            150m,
-            account.Balance);
+        var (account, openingEntry) = Account.Open("Checking", 1000m);
 
         context.Accounts.Add(account);
+        context.Transactions.Add(openingEntry);
+
+        await context.SaveChangesAsync();
+
+        var transaction = account.Deposit(150m);
+
         context.Transactions.Add(transaction);
 
         await context.SaveChangesAsync();
@@ -105,7 +106,7 @@ public sealed class AtmDbContextTests
         context.ChangeTracker.Clear();
 
         var savedTransaction = await context.Transactions
-            .SingleAsync();
+            .SingleAsync(t => t.Type == TransactionType.Deposit);
 
         Assert.Equal(account.Id, savedTransaction.AccountId);
         Assert.Equal(150m, savedTransaction.Amount);
@@ -129,12 +130,12 @@ public sealed class AtmDbContextTests
         await context.Database.EnsureCreatedAsync();
 
         context.Accounts.Add(
-            Account.Create("Checking", 1000m));
+            Account.Open("Checking", 1000m).Account);
 
         await context.SaveChangesAsync();
 
         context.Accounts.Add(
-            Account.Create("Checking", 500m));
+            Account.Open("Checking", 500m).Account);
 
         await Assert.ThrowsAsync<DbUpdateException>(
             () => context.SaveChangesAsync());
@@ -154,16 +155,9 @@ public sealed class AtmDbContextTests
             var account = await context.Accounts
                 .SingleAsync(a => a.Name == "Checking");
 
-            account.Deposit(250m);
-
-            // Record the deposit in the ledger so reconciliation on the
-            // second initialization sees a consistent balance.
-            context.Transactions.Add(
-                Transaction.Create(
-                    account.Id,
-                    TransactionType.Deposit,
-                    250m,
-                    account.Balance));
+            // The deposit returns its ledger entry; the DB trigger then
+            // updates Accounts.Balance from it.
+            context.Transactions.Add(account.Deposit(250m));
 
             await context.SaveChangesAsync();
         }

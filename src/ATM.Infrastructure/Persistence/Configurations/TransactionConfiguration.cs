@@ -42,6 +42,9 @@ public sealed class TransactionConfiguration
         builder.Property(transaction => transaction.AccountId)
             .IsRequired();
 
+        builder.Property(transaction => transaction.Sequence)
+            .IsRequired();
+
         builder.Property(transaction => transaction.Type)
             .HasConversion<int>()
             .IsRequired();
@@ -83,5 +86,14 @@ public sealed class TransactionConfiguration
         .IsUnique()
         .HasFilter("\"Type\" = 5")
         .HasDatabaseName("UX_Transactions_OpeningBalance");
+
+        // One entry per ledger position; also serves the sequence lookups in the triggers.
+        builder.HasIndex(transaction => new
+        {
+            transaction.AccountId,
+            transaction.Sequence
+        })
+        .IsUnique()
+        .HasDatabaseName("UX_Transactions_AccountSequence");
     }
 }

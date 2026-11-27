@@ -13,6 +13,10 @@ public sealed class Transaction
 
     public Guid AccountId { get; private set; }
 
+    // Position of this entry in the account's ledger: 1 for OpeningBalance, then previous + 1.
+    // This is the ledger's order; never rely on insertion order or SQLite rowid.
+    public long Sequence { get; private set; }
+
     public TransactionType Type { get; private set; }
 
     public decimal Amount { get; private set; }
@@ -28,8 +32,11 @@ public sealed class Transaction
     {
     }
 
+    public const long OpeningSequence = 1;
+
     public static Transaction Create(
         Guid accountId,
+        long sequence,
         TransactionType type,
         decimal amount,
         decimal balanceAfter,
@@ -47,10 +54,19 @@ public sealed class Transaction
             throw new ArgumentOutOfRangeException(nameof(type));
         }
 
+        var isOpening = type == TransactionType.OpeningBalance;
+
+        if (isOpening ? sequence != OpeningSequence : sequence <= OpeningSequence)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(sequence),
+                "OpeningBalance must be sequence 1; every later entry must follow it.");
+        }
+
         MoneyRules.ValidateAmount(amount);
         MoneyRules.ValidateBalance(balanceAfter);
 
-        if (type == TransactionType.OpeningBalance && amount != balanceAfter)
+        if (isOpening && amount != balanceAfter)
         {
             throw new ArgumentException(
                 "Opening balance amount must match BalanceAfter.", nameof(balanceAfter));
@@ -80,6 +96,7 @@ public sealed class Transaction
         {
             Id = Guid.NewGuid(),
             AccountId = accountId,
+            Sequence = sequence,
             Type = type,
             Amount = amount,
             BalanceAfter = balanceAfter,

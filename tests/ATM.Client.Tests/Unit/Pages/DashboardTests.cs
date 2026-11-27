@@ -100,6 +100,72 @@ public sealed class DashboardTests : BunitContext
         });
     }
 
+    [Theory]
+    [InlineData("deposit-tab", "#operation-account")]
+    [InlineData("withdrawal-tab", "#operation-account")]
+    [InlineData("transfer-tab", "#transfer-source")]
+    public void Dashboard_FormAccountChange_SelectsAccountAndLoadsHistory(
+        string tab,
+        string accountSelect)
+    {
+        var savingsHistory = new[]
+        {
+            new TransactionDto(
+                Guid.NewGuid(),
+                _savings.Id,
+                "OpeningBalance",
+                1000m,
+                1000m,
+                null,
+                DateTimeOffset.UtcNow)
+        };
+
+        _apiClient
+            .Setup(api => api.GetTransactionHistoryAsync(
+                _savings.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(savingsHistory);
+
+        var component = Render<Dashboard>();
+
+        component.WaitForElement(
+            $"[data-testid='{tab}']").Click();
+
+        component.WaitForElement(accountSelect)
+            .Change(_savings.Id.ToString());
+
+        component.WaitForAssertion(() =>
+        {
+            Assert.Equal(
+                _savings.Id,
+                _state.SelectedAccountId);
+
+            _apiClient.Verify(
+                api => api.GetTransactionHistoryAsync(
+                    _savings.Id,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            // The history panel and the highlighted card follow the form.
+            var history = component.Find(
+                "section[aria-label='Transaction history']");
+
+            Assert.Contains("Savings", history.TextContent);
+            Assert.Contains("Opening balance", history.TextContent);
+
+            var selectedCard = component.Find(
+                "[data-testid='account-card'][aria-pressed='true']");
+
+            Assert.Contains("Savings", selectedCard.TextContent);
+
+            // The form keeps the user's choice.
+            Assert.Equal(
+                _savings.Id.ToString(),
+                component.Find(accountSelect)
+                    .GetAttribute("value"));
+        });
+    }
+
     [Fact]
     public void Dashboard_SwitchesToTransferForm()
     {

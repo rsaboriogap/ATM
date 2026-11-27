@@ -32,14 +32,7 @@ public sealed class UnitOfWorkTests
                 var account =
                     await accounts.GetForUpdateAsync(accountId, ct);
 
-                account!.Deposit(150m);
-
-                transactions.Add(
-                    Transaction.Create(
-                        account.Id,
-                        TransactionType.Deposit,
-                        150m,
-                        account.Balance));
+                transactions.Add(account!.Deposit(150m));
 
                 return account.Balance;
             });
@@ -81,14 +74,7 @@ public sealed class UnitOfWorkTests
                     var account =
                         await accounts.GetForUpdateAsync(accountId, ct);
 
-                    account!.Deposit(100m);
-
-                    transactions.Add(
-                        Transaction.Create(
-                            account.Id,
-                            TransactionType.Deposit,
-                            100m,
-                            account.Balance));
+                    transactions.Add(account!.Deposit(100m));
 
                     // Force a domain failure.
                     account.Withdraw(5000m);
@@ -134,12 +120,13 @@ public sealed class UnitOfWorkTests
                     var account =
                         await accounts.GetForUpdateAsync(accountId, ct);
 
-                    account!.Deposit(100m);
+                    transactions.Add(account!.Deposit(100m));
 
                     // Force a foreign-key violation.
                     transactions.Add(
                         Transaction.Create(
                             Guid.NewGuid(),
+                            2,
                             TransactionType.Deposit,
                             100m,
                             1100m));
@@ -192,28 +179,15 @@ public sealed class UnitOfWorkTests
                 var destination = await accounts
                     .GetForUpdateAsync(destinationId, ct);
 
-                source!.Withdraw(150m);
-                destination!.Deposit(150m);
+                var entries = Account.Transfer(
+                    source!,
+                    destination!,
+                    150m);
 
-                var reference = Guid.NewGuid();
+                transactions.Add(entries.Outgoing);
+                transactions.Add(entries.Incoming);
 
-                transactions.Add(
-                    Transaction.Create(
-                        source.Id,
-                        TransactionType.TransferOut,
-                        150m,
-                        source.Balance,
-                        reference));
-
-                transactions.Add(
-                    Transaction.Create(
-                        destination.Id,
-                        TransactionType.TransferIn,
-                        150m,
-                        destination.Balance,
-                        reference));
-
-                return reference;
+                return entries.ReferenceId;
             });
 
         await using var verification =

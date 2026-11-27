@@ -120,7 +120,8 @@ Transfer
                                      Accounts="@State.Accounts"
                                      DefaultAccountId="@State.SelectedAccountId"
                                      Disabled="@OperationsDisabled"
-                                     OnSubmit="DepositAsync" />
+                                     OnSubmit="DepositAsync"
+                                     OnAccountChanged="SelectAccountAsync" />
 
                         break;
 
@@ -130,7 +131,8 @@ Transfer
                                         Accounts="@State.Accounts"
                                         DefaultAccountId="@State.SelectedAccountId"
                                         Disabled="@OperationsDisabled"
-                                        OnSubmit="WithdrawAsync" />
+                                        OnSubmit="WithdrawAsync"
+                                        OnAccountChanged="SelectAccountAsync" />
 
                         break;
 
@@ -140,7 +142,8 @@ Transfer
                                       Accounts="@State.Accounts"
                                       DefaultAccountId="@State.SelectedAccountId"
                                       Disabled="@OperationsDisabled"
-                                      OnSubmit="TransferAsync" />
+                                      OnSubmit="TransferAsync"
+                                      OnAccountChanged="SelectAccountAsync" />
 
                         break;
                 }

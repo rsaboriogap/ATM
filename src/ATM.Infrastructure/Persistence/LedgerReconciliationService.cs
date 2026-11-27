@@ -26,7 +26,16 @@ public sealed class LedgerReconciliationService(AtmDbContext context)
     public async Task<IReadOnlyList<string>> GetIntegrityIssuesAsync(
         CancellationToken cancellationToken = default)
     {
+        // Ledger order is the explicit Sequence column, never rowid (which VACUUM or a
+        // table rebuild may renumber).
         return await context.Database.SqlQueryRaw<string>("""
+            WITH Ordered AS (
+                SELECT t.Id, t.Type, t.Amount, t.BalanceAfter, t.Sequence,
+                       LAG(t.BalanceAfter) OVER w AS PrevBalance,
+                       ROW_NUMBER() OVER w AS Position
+                FROM Transactions t
+                WINDOW w AS (PARTITION BY t.AccountId ORDER BY t.Sequence)
+            )
             SELECT 'Missing or duplicate opening balance: ' || a.Id AS Value
             FROM Accounts a LEFT JOIN Transactions t ON t.AccountId = a.Id AND t.Type = 5
             GROUP BY a.Id HAVING COUNT(t.Id) <> 1
@@ -36,6 +45,25 @@ public sealed class LedgerReconciliationService(AtmDbContext context)
             HAVING ReferenceId IS NULL OR lower(ReferenceId) = '00000000-0000-0000-0000-000000000000'
                 OR COUNT(*) <> 2 OR COUNT(DISTINCT AccountId) <> 2
                 OR COUNT(DISTINCT Type) <> 2 OR MIN(Amount) <> MAX(Amount)
+            UNION ALL
+            SELECT 'Ledger sequence gap at transaction ' || o.Id AS Value
+            FROM Ordered o
+            WHERE o.Sequence <> o.Position
+            UNION ALL
+            SELECT 'Broken running balance at transaction ' || o.Id AS Value
+            FROM Ordered o
+            WHERE (o.Position = 1 AND o.Type <> 5)
+               OR (o.Position > 1 AND o.Type = 5)
+               OR (o.Position > 1 AND o.BalanceAfter <>
+                     o.PrevBalance + CASE WHEN o.Type IN (1,3) THEN o.Amount ELSE -o.Amount END)
+            UNION ALL
+            SELECT 'Stored balance differs from last ledger entry: ' || a.Id AS Value
+            FROM Accounts a
+            LEFT JOIN Transactions last
+                   ON last.AccountId = a.Id
+                  AND last.Sequence = (SELECT MAX(t.Sequence) FROM Transactions t WHERE t.AccountId = a.Id)
+            WHERE a.Balance IS NOT last.BalanceAfter
+               OR a.LedgerSequence IS NOT last.Sequence
             """).ToListAsync(cancellationToken);
     }
 

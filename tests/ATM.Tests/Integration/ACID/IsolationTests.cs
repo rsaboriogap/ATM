@@ -51,7 +51,13 @@ public sealed class IsolationTests : AcidTestBase
         await using var tx = a.BeginTransaction(deferred: false);
         await using var change = a.CreateCommand();
         change.Transaction = tx;
-        change.CommandText = "UPDATE Accounts SET Balance = Balance + 100 WHERE Name = 'Checking'";
+        // A valid ledger entry (+100.00); the sync trigger updates Accounts.Balance in the same transaction.
+        change.CommandText = """
+            INSERT INTO Transactions (Id, AccountId, Sequence, Type, Amount, BalanceAfter, ReferenceId, CreatedAt)
+            SELECT lower(hex(randomblob(16))), a.Id, a.LedgerSequence + 1, 1, 10000, a.Balance + 10000, NULL, t.CreatedAt
+            FROM Accounts a JOIN Transactions t ON t.AccountId = a.Id
+            WHERE a.Name = 'Checking' LIMIT 1
+            """;
         await change.ExecuteNonQueryAsync();
         await using var read = b.CreateCommand();
         read.CommandText = "SELECT Balance FROM Accounts WHERE Name = 'Checking'";

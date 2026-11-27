@@ -17,12 +17,14 @@ public sealed class TransactionTests
 
         var transaction = Transaction.Create(
             accountId,
+            2,
             TransactionType.Deposit,
             150m,
             1150m);
 
         Assert.NotEqual(Guid.Empty, transaction.Id);
         Assert.Equal(accountId, transaction.AccountId);
+        Assert.Equal(2, transaction.Sequence);
         Assert.Equal(TransactionType.Deposit, transaction.Type);
         Assert.Equal(150m, transaction.Amount);
         Assert.Equal(1150m, transaction.BalanceAfter);
@@ -35,6 +37,7 @@ public sealed class TransactionTests
         Assert.Throws<ArgumentException>(() =>
             Transaction.Create(
                 Guid.NewGuid(),
+                2,
                 TransactionType.TransferOut,
                 150m,
                 850m));
@@ -47,6 +50,7 @@ public sealed class TransactionTests
 
         var outgoing = Transaction.Create(
             Guid.NewGuid(),
+            2,
             TransactionType.TransferOut,
             150m,
             850m,
@@ -54,6 +58,7 @@ public sealed class TransactionTests
 
         var incoming = Transaction.Create(
             Guid.NewGuid(),
+            2,
             TransactionType.TransferIn,
             150m,
             1150m,
@@ -70,6 +75,7 @@ public sealed class TransactionTests
         Assert.Throws<InvalidAmountException>(() =>
             Transaction.Create(
                 Guid.NewGuid(),
+                2,
                 TransactionType.Deposit,
                 -150m,
                 850m));
@@ -81,8 +87,26 @@ public sealed class TransactionTests
         Assert.Throws<ArgumentException>(() =>
             Transaction.Create(
                 Guid.Empty,
+                2,
                 TransactionType.Deposit,
                 150m,
                 1150m));
+    }
+
+    [Theory]
+    [InlineData(TransactionType.OpeningBalance, 0)]
+    [InlineData(TransactionType.OpeningBalance, 2)]
+    [InlineData(TransactionType.Deposit, 1)]
+    [InlineData(TransactionType.Deposit, 0)]
+    [InlineData(TransactionType.Withdrawal, -1)]
+    public void Create_InvalidSequence_ThrowsException(TransactionType type, long sequence)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Transaction.Create(
+                Guid.NewGuid(),
+                sequence,
+                type,
+                150m,
+                150m));
     }
 }

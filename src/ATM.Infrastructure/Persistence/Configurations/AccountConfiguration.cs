@@ -3,6 +3,7 @@ using ATM.Domain.Entities;
 using ATM.Domain.Rules;
 using ATM.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ATM.Infrastructure.Persistence.Configurations;
@@ -32,10 +33,19 @@ public sealed class AccountConfiguration
             .IsRequired()
             .HasMaxLength(100);
 
+        // After insert, Balance and LedgerSequence are owned by the ledger: the
+        // TR_Transactions_SyncAccountBalance trigger sets them from each new entry, and
+        // TR_Accounts_BalanceFollowsLedger rejects any other write. EF must never send
+        // them in an UPDATE.
         builder.Property(account => account.Balance)
             .HasConversion<MoneyValueConverter>()
             .HasColumnType("INTEGER")
-            .IsRequired();
+            .IsRequired()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+
+        builder.Property(account => account.LedgerSequence)
+            .IsRequired()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
 
         builder.Property(account => account.Currency)
             .HasMaxLength(3)

@@ -22,7 +22,7 @@
             <InputSelect id="transfer-source"
                          class="form-select"
                          @bind-Value="_model.SourceAccountId"
-                         @bind-Value:after="SourceChanged">
+                         @bind-Value:after="SourceSelectedAsync">
 
                 <option value="">
                     Select source account
@@ -128,6 +128,11 @@
         OnSubmit
     { get; set; }
 
+    // Raised when the user picks a source account, so the dashboard can keep
+    // the selected card and the transaction history in sync with this form.
+    [Parameter]
+    public EventCallback<Guid> OnAccountChanged { get; set; }
+
     private TransferFormModel _model = new();
 
     private Guid? _previousDefaultAccountId;
@@ -154,6 +159,17 @@
 
             SourceChanged();
         }
+    }
+
+    // User-driven change only; OnParametersSet calls SourceChanged directly
+    // so a dashboard-driven selection doesn't echo back.
+    private Task SourceSelectedAsync()
+    {
+        SourceChanged();
+
+        return _model.SourceAccountId is Guid accountId
+            ? OnAccountChanged.InvokeAsync(accountId)
+            : Task.CompletedTask;
     }
 
     private void SourceChanged()

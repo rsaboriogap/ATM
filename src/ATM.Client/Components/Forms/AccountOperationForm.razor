@@ -13,7 +13,8 @@
 
             <InputSelect id="operation-account"
                          class="form-select"
-                         @bind-Value="_model.AccountId">
+                         @bind-Value="_model.AccountId"
+                         @bind-Value:after="NotifyAccountChangedAsync">
 
                 <option value="">
                     Select an account
@@ -110,6 +111,11 @@
         OnSubmit
     { get; set; }
 
+    // Raised when the user picks an account, so the dashboard can keep the
+    // selected card and the transaction history in sync with this form.
+    [Parameter]
+    public EventCallback<Guid> OnAccountChanged { get; set; }
+
     private readonly AccountOperationFormModel _model = new();
 
     private Guid? _previousDefaultAccountId;
@@ -130,6 +136,15 @@
 
             _previousDefaultAccountId = DefaultAccountId;
         }
+    }
+
+    private Task NotifyAccountChangedAsync()
+    {
+        _localError = null;
+
+        return _model.AccountId is Guid accountId
+            ? OnAccountChanged.InvokeAsync(accountId)
+            : Task.CompletedTask;
     }
 
     private async Task SubmitAsync()

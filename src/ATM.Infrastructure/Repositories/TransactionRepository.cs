@@ -25,9 +25,7 @@ public sealed class TransactionRepository
             .Where(transaction =>
                 transaction.AccountId == accountId)
             .OrderByDescending(transaction =>
-                transaction.CreatedAt)
-            .ThenByDescending(transaction =>
-                transaction.Id)
+                transaction.Sequence)
             .ToListAsync(cancellationToken);
     }
 

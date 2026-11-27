@@ -5,6 +5,7 @@ using ATM.Application.Services;
 using ATM.Domain.Entities;
 using ATM.Domain.Enums;
 using ATM.Domain.Exceptions;
+using ATM.Domain.Rules;
 using Moq;
 using Xunit;
 
@@ -44,7 +45,7 @@ public sealed class AtmServiceTests
 
     private Account CreateAccount(string name)
     {
-        var account = Account.Create(name, 1000m);
+        var account = Account.Open(name, 1000m).Account;
 
         _accounts
             .Setup(repository => repository.GetByIdAsync(
@@ -279,9 +280,16 @@ public sealed class AtmServiceTests
     {
         var source = CreateAccount("Checking");
 
-        var destination = Account.Create(
+        // Opening balance is capped at MaximumAmount; reach the
+        // maximum balance through deposits.
+        var destination = Account.Open(
             "Savings",
-            1_000_000_000m);
+            MoneyRules.MaximumAmount).Account;
+
+        while (destination.Balance < MoneyRules.MaximumBalance)
+        {
+            destination.Deposit(MoneyRules.MaximumAmount);
+        }
 
         _accounts.Setup(repository =>
             repository.GetForUpdateAsync(
@@ -307,6 +315,7 @@ public sealed class AtmServiceTests
 
         var transaction = Transaction.Create(
             account.Id,
+            2,
             TransactionType.Deposit,
             100m,
             1100m);

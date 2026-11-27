@@ -122,39 +122,20 @@ public sealed class AtmService : IAtmService
                     await GetRequiredAccountForUpdateAsync(
                         request.DestinationAccountId, ct);
 
-                // Validate the destination balance before
-                // modifying either account.
-                MoneyRules.ValidateBalance(
-                    destination.Balance + request.Amount);
+                var entries = Account.Transfer(
+                    source,
+                    destination,
+                    request.Amount);
 
-                source.Withdraw(request.Amount);
-                destination.Deposit(request.Amount);
-
-                var referenceId = Guid.NewGuid();
-
-                var outgoingTransaction = Transaction.Create(
-                    source.Id,
-                    TransactionType.TransferOut,
-                    request.Amount,
-                    source.Balance,
-                    referenceId);
-
-                var incomingTransaction = Transaction.Create(
-                    destination.Id,
-                    TransactionType.TransferIn,
-                    request.Amount,
-                    destination.Balance,
-                    referenceId);
-
-                _transactionRepository.Add(outgoingTransaction);
-                _transactionRepository.Add(incomingTransaction);
+                _transactionRepository.Add(entries.Outgoing);
+                _transactionRepository.Add(entries.Incoming);
 
                 return new TransferResultDto(
-                    referenceId,
+                    entries.ReferenceId,
                     source.ToDto(),
                     destination.ToDto(),
-                    outgoingTransaction.ToDto(),
-                    incomingTransaction.ToDto());
+                    entries.Outgoing.ToDto(),
+                    entries.Incoming.ToDto());
             },
             cancellationToken);
     }
@@ -176,26 +157,13 @@ public sealed class AtmService : IAtmService
                     await GetRequiredAccountForUpdateAsync(
                         accountId, ct);
 
-                switch (transactionType)
+                var transaction = transactionType switch
                 {
-                    case TransactionType.Deposit:
-                        account.Deposit(amount);
-                        break;
-
-                    case TransactionType.Withdrawal:
-                        account.Withdraw(amount);
-                        break;
-
-                    default:
-                        throw new InvalidOperationException(
-                            "Unsupported transaction type.");
-                }
-
-                var transaction = Transaction.Create(
-                    account.Id,
-                    transactionType,
-                    amount,
-                    account.Balance);
+                    TransactionType.Deposit => account.Deposit(amount),
+                    TransactionType.Withdrawal => account.Withdraw(amount),
+                    _ => throw new InvalidOperationException(
+                        "Unsupported transaction type.")
+                };
 
                 _transactionRepository.Add(transaction);
 
