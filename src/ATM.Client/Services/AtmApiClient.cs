@@ -14,6 +14,8 @@ public sealed class AtmApiClient : IAtmApiClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<AtmApiClient> _logger;
 
+    private const string IdempotencyKeyHeader = "Idempotency-Key";
+
     private static readonly JsonSerializerOptions JsonOptions =
         new(JsonSerializerDefaults.Web);
 
@@ -47,35 +49,41 @@ public sealed class AtmApiClient : IAtmApiClient
     public Task<OperationResultDto> DepositAsync(
         Guid accountId,
         DepositRequest request,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         return SendAsync<OperationResultDto>(
             HttpMethod.Post,
             $"api/accounts/{accountId}/deposits",
             request,
+            idempotencyKey,
             cancellationToken);
     }
 
     public Task<OperationResultDto> WithdrawAsync(
         Guid accountId,
         WithdrawalRequest request,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         return SendAsync<OperationResultDto>(
             HttpMethod.Post,
             $"api/accounts/{accountId}/withdrawals",
             request,
+            idempotencyKey,
             cancellationToken);
     }
 
     public Task<TransferResultDto> TransferAsync(
         TransferRequest request,
+        Guid idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         return SendAsync<TransferResultDto>(
             HttpMethod.Post,
             "api/transfers",
             request,
+            idempotencyKey,
             cancellationToken);
     }
 
@@ -94,6 +102,7 @@ public sealed class AtmApiClient : IAtmApiClient
         HttpMethod method,
         string endpoint,
         object? body = null,
+        Guid? idempotencyKey = null,
         CancellationToken cancellationToken = default)
         where TResponse : class
     {
@@ -104,6 +113,13 @@ public sealed class AtmApiClient : IAtmApiClient
         using var request = new HttpRequestMessage(
             method,
             endpoint);
+
+        if (idempotencyKey is { } key)
+        {
+            request.Headers.Add(
+                IdempotencyKeyHeader,
+                key.ToString());
+        }
 
         if (body is not null)
         {
