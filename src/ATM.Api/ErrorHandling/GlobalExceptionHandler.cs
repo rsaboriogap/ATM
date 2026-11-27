@@ -1,9 +1,13 @@
-﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
+﻿using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ATM.Api.ErrorHandling;
 
+/// <summary>
+/// Turns exceptions into ProblemDetails responses. <see cref="ExceptionMapper"/> decides
+/// status, code and message; traceId and instance are added for every problem response
+/// in one place (AddProblemDetails in ApiServiceExtensions).
+/// </summary>
 public sealed class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
@@ -30,30 +34,39 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var mapping = ExceptionMapper.Map(exception);
 
-        var traceId = Activity.Current?.Id
-            ?? httpContext.TraceIdentifier;
+        // Expected business rejections (4xx) are routine; only server-side
+        // failures carry the exception.
+        var level = mapping.StatusCode switch
+        {
+            StatusCodes.Status500InternalServerError => LogLevel.Error,
+            StatusCodes.Status503ServiceUnavailable => LogLevel.Warning,
+            _ => LogLevel.Information
+        };
 
-        LogException(
-            httpContext,
-            exception,
-            mapping,
-            traceId);
+        _logger.Log(
+            level,
+            level >= LogLevel.Warning ? exception : null,
+            "ATM request failed. Method: {Method}, Path: {Path}, " +
+            "Code: {ErrorCode}, Status: {StatusCode}",
+            httpContext.Request.Method,
+            httpContext.Request.Path,
+            mapping.Code,
+            mapping.StatusCode);
 
         var problemDetails = new ProblemDetails
         {
-            Type = "about:blank",
-            Title = mapping.Title,
             Status = mapping.StatusCode,
-            Detail = mapping.Detail,
-            Instance = httpContext.Request.Path.Value
+            Title = mapping.Title,
+            Detail = mapping.Detail
         };
 
         problemDetails.Extensions["code"] = mapping.Code;
-        problemDetails.Extensions["traceId"] = traceId;
 
         httpContext.Response.StatusCode = mapping.StatusCode;
 
-        var written = await _problemDetailsService.TryWriteAsync(
+        // If the client's Accept header rules out JSON, nothing is written,
+        // but the status code still reports the outcome.
+        await _problemDetailsService.TryWriteAsync(
             new ProblemDetailsContext
             {
                 HttpContext = httpContext,
@@ -61,67 +74,6 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 Exception = exception
             });
 
-        if (!written)
-        {
-            await httpContext.Response.WriteAsJsonAsync(
-                problemDetails,
-                options: null,
-                contentType: "application/problem+json",
-                cancellationToken: cancellationToken);
-        }
-
         return true;
-    }
-
-    private void LogException(
-        HttpContext httpContext,
-        Exception exception,
-        ExceptionMapping mapping,
-        string traceId)
-    {
-        if (mapping.StatusCode ==
-            StatusCodes.Status500InternalServerError)
-        {
-            _logger.LogError(
-                exception,
-                "Unexpected ATM error. " +
-                "Method: {Method}, Path: {Path}, " +
-                "Code: {ErrorCode}, Status: {StatusCode}, " +
-                "TraceId: {TraceId}",
-                httpContext.Request.Method,
-                httpContext.Request.Path,
-                mapping.Code,
-                mapping.StatusCode,
-                traceId);
-
-            return;
-        }
-
-        if (mapping.StatusCode ==
-            StatusCodes.Status503ServiceUnavailable)
-        {
-            _logger.LogWarning(
-                exception,
-                "ATM database temporarily unavailable. " +
-                "Method: {Method}, Path: {Path}, " +
-                "Code: {ErrorCode}, TraceId: {TraceId}",
-                httpContext.Request.Method,
-                httpContext.Request.Path,
-                mapping.Code,
-                traceId);
-
-            return;
-        }
-
-        _logger.LogInformation(
-            "ATM request rejected. " +
-            "Method: {Method}, Path: {Path}, " +
-            "Code: {ErrorCode}, Status: {StatusCode}, " +
-            "TraceId: {TraceId}",
-            httpContext.Request.Method,
-            httpContext.Request.Path,
-            mapping.Code,
-            mapping.StatusCode,
-            traceId);
     }
 }

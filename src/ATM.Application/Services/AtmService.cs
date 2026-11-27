@@ -72,31 +72,17 @@ public sealed class AtmService : IAtmService
 
     public Task<OperationResultDto> DepositAsync(
         Guid accountId,
-        DepositRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        return ExecuteAccountOperationAsync(
-            accountId,
-            request.Amount,
-            TransactionType.Deposit,
-            cancellationToken);
-    }
+        decimal amount,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAccountOperationAsync(
+            accountId, amount, TransactionType.Deposit, cancellationToken);
 
     public Task<OperationResultDto> WithdrawAsync(
         Guid accountId,
-        WithdrawalRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        return ExecuteAccountOperationAsync(
-            accountId,
-            request.Amount,
-            TransactionType.Withdrawal,
-            cancellationToken);
-    }
+        decimal amount,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAccountOperationAsync(
+            accountId, amount, TransactionType.Withdrawal, cancellationToken);
 
     public Task<TransferResultDto> TransferAsync(
         TransferRequest request,

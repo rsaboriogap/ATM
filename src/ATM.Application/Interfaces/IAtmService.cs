@@ -13,12 +13,12 @@ public interface IAtmService
 
     Task<OperationResultDto> DepositAsync(
         Guid accountId,
-        DepositRequest request,
+        decimal amount,
         CancellationToken cancellationToken = default);
 
     Task<OperationResultDto> WithdrawAsync(
         Guid accountId,
-        WithdrawalRequest request,
+        decimal amount,
         CancellationToken cancellationToken = default);
 
     Task<TransferResultDto> TransferAsync(

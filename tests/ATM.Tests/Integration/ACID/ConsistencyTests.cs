@@ -1,4 +1,4 @@
-using ATM.Application.DTOs;
+﻿using ATM.Application.DTOs;
 using ATM.Application.Interfaces.Persistence;
 using ATM.Domain.Entities;
 using ATM.Domain.Enums;
@@ -16,8 +16,8 @@ public sealed class ConsistencyTests : AcidTestBase
     [Fact]
     public async Task AllOperations_ShouldReconcile()
     {
-        await Run(s => s.DepositAsync(Checking, new DepositRequest(500.25m)));
-        await Run(s => s.WithdrawAsync(Checking, new WithdrawalRequest(200.10m)));
+        await Run(s => s.DepositAsync(Checking, 500.25m));
+        await Run(s => s.WithdrawAsync(Checking, 200.10m));
         await Run(s => s.TransferAsync(new TransferRequest(Checking, Savings, 300.15m)));
         var state = await ReadState();
         Assert.Equal(1000m, state.Accounts.Single(a => a.Id == Checking).Balance);
@@ -83,7 +83,7 @@ public sealed class ConsistencyTests : AcidTestBase
     [Fact]
     public async Task Domain_ShouldRejectFractionalCent()
     {
-        await Assert.ThrowsAsync<InvalidAmountException>(() => Run(s => s.DepositAsync(Checking, new DepositRequest(0.015m))));
+        await Assert.ThrowsAsync<InvalidAmountException>(() => Run(s => s.DepositAsync(Checking, 0.015m)));
         AssertReconciled(await ReadState());
     }
 
@@ -159,8 +159,8 @@ public sealed class ConsistencyTests : AcidTestBase
     [Fact]
     public async Task LedgerOrder_ShouldSurviveRowidRenumbering()
     {
-        await Run(s => s.DepositAsync(Checking, new DepositRequest(500m)));
-        await Run(s => s.WithdrawAsync(Checking, new WithdrawalRequest(200m)));
+        await Run(s => s.DepositAsync(Checking, 500m));
+        await Run(s => s.WithdrawAsync(Checking, 200m));
         await Run(s => s.TransferAsync(new TransferRequest(Checking, Savings, 300m)));
 
         // Simulate a table rebuild / VACUUM that renumbers rowids: re-insert every
@@ -203,7 +203,7 @@ public sealed class ConsistencyTests : AcidTestBase
         }
 
         // ...and the ledger keeps accepting correctly ordered entries.
-        var result = await Run(s => s.DepositAsync(Checking, new DepositRequest(25m)));
+        var result = await Run(s => s.DepositAsync(Checking, 25m));
         Assert.Equal(1025m, result.Account.Balance);
 
         var state = await ReadState();

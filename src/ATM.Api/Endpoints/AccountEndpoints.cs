@@ -24,25 +24,12 @@ public static class AccountEndpoints
         group.MapPost("/{id:guid}/deposits", DepositAsync)
             .WithName("Deposit")
             .WithSummary("Deposit funds into an account")
-            .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
-
+            .ProducesMoneyOperationProblems();
 
         group.MapPost("/{id:guid}/withdrawals", WithdrawAsync)
             .WithName("Withdraw")
             .WithSummary("Withdraw funds from an account")
-            .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .ProducesMoneyOperationProblems();
 
         group.MapGet("/{id:guid}/transactions", GetHistoryAsync)
             .WithName("GetTransactionHistory")
@@ -85,7 +72,7 @@ public static class AccountEndpoints
     {
         var result = await service.DepositAsync(
             id,
-            new DepositRequest(request.Amount!.Value),
+            request.Amount!.Value,
             cancellationToken);
 
         return TypedResults.Ok(result);
@@ -100,7 +87,7 @@ public static class AccountEndpoints
     {
         var result = await service.WithdrawAsync(
             id,
-            new WithdrawalRequest(request.Amount!.Value),
+            request.Amount!.Value,
             cancellationToken);
 
         return TypedResults.Ok(result);

@@ -16,6 +16,9 @@ public static class ApiServiceExtensions
 
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
+        // The single place that completes every problem response, whether it
+        // comes from GlobalExceptionHandler or from the framework (validation,
+        // unknown route, unsupported media type).
         services.AddProblemDetails(options =>
         {
             options.CustomizeProblemDetails = context =>
@@ -25,18 +28,15 @@ public static class ApiServiceExtensions
                 problem.Instance ??=
                     context.HttpContext.Request.Path.Value;
 
-                if (!problem.Extensions.ContainsKey("traceId"))
-                {
-                    problem.Extensions["traceId"] =
-                        Activity.Current?.Id
-                        ?? context.HttpContext.TraceIdentifier;
-                }
+                problem.Extensions["traceId"] =
+                    Activity.Current?.Id
+                    ?? context.HttpContext.TraceIdentifier;
 
-                if (!problem.Extensions.ContainsKey("code"))
-                {
-                    problem.Extensions["code"] =
-                        ResolveErrorCode(problem);
-                }
+                // GlobalExceptionHandler sets a specific code; framework
+                // problems get one derived from the status.
+                problem.Extensions.TryAdd(
+                    "code",
+                    ResolveErrorCode(problem));
             };
         });
 

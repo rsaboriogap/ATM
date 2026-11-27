@@ -2,7 +2,6 @@ using ATM.Api.Configuration;
 using ATM.Api.Endpoints;
 using ATM.Application;
 using ATM.Infrastructure;
-using ATM.Infrastructure.Logging;
 using ATM.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +18,7 @@ builder.Services.AddInfrastructure(
     builder.Configuration);
 
 // Persist logs to the Logs table (levels: Logging:Database)
-builder.Logging.AddDatabaseLogger();
+//builder.Logging.AddDatabaseLogger();
 
 var app = builder.Build();
 

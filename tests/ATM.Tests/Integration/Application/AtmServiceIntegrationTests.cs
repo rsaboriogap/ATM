@@ -38,7 +38,7 @@ public sealed class AtmServiceIntegrationTests
 
         await service.DepositAsync(
             checking.Id,
-            new DepositRequest(150m));
+            150m);
 
         await using var verification =
             database.CreateContext();
@@ -75,7 +75,7 @@ public sealed class AtmServiceIntegrationTests
 
         await service.WithdrawAsync(
             checking.Id,
-            new WithdrawalRequest(250m));
+            250m);
 
         await using var verification =
             database.CreateContext();
@@ -197,7 +197,7 @@ public sealed class AtmServiceIntegrationTests
 
         var result = await service.DepositAsync(
             account.Id,
-            new DepositRequest(100m));
+            100m);
 
         Assert.Equal(1100m, result.Account.Balance);
     }

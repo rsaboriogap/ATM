@@ -73,6 +73,31 @@ public sealed class AtmErrorContractTests : BackendTestBase
     }
 
     [Fact]
+    public async Task BusinessError_ClientRejectingJson_StillGetsStatusCode()
+    {
+        await using var factory = new AtmApiFactory();
+        using var client = CreateClient(factory);
+
+        var accounts = await GetAccountsAsync(client);
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/accounts/{accounts[0].Id}/withdrawals")
+        {
+            Content = JsonContent.Create(new { Amount = 5000m })
+        };
+        request.Headers.Accept.ParseAdd("text/html");
+
+        using var response = await client.SendAsync(request);
+
+        // No problem+json body (the client refused JSON), but the outcome is kept.
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.NotEqual(
+            "application/problem+json",
+            response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
     public async Task RejectedRequests_DoNotModifyFinancialState()
     {
         await using var factory = new AtmApiFactory();

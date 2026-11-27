@@ -15,13 +15,7 @@ public static class TransferEndpoints
         group.MapPost("/", TransferAsync)
             .WithName("Transfer")
             .WithSummary("Transfer funds between accounts")
-            .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .ProducesMoneyOperationProblems();
 
         return group;
     }

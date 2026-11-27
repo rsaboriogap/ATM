@@ -15,4 +15,15 @@ public static class EndpointExtensions
 
         return app;
     }
+
+    // OpenAPI metadata for the errors every money-moving endpoint can return.
+    public static RouteHandlerBuilder ProducesMoneyOperationProblems(
+        this RouteHandlerBuilder builder) => builder
+        .ProducesValidationProblem()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status415UnsupportedMediaType)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 }

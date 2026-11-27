@@ -1,4 +1,4 @@
-using ATM.Application.DTOs;
+﻿using ATM.Application.DTOs;
 using ATM.Domain.Enums;
 using ATM.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -47,8 +47,8 @@ public sealed class AtomicityTests : AcidTestBase
             BEGIN SELECT RAISE(ABORT, 'TEST_LEDGER_INSERT'); END;
             """);
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => deposit
-            ? Run(s => s.DepositAsync(Checking, new DepositRequest(100m)))
-            : Run(s => s.WithdrawAsync(Checking, new WithdrawalRequest(100m))));
+            ? Run(s => s.DepositAsync(Checking, 100m))
+            : Run(s => s.WithdrawAsync(Checking, 100m)));
         Assert.Contains("TEST_LEDGER_INSERT", ex.ToString());
         await AssertUnchanged();
     }
@@ -56,7 +56,7 @@ public sealed class AtomicityTests : AcidTestBase
     [Fact]
     public async Task InsufficientFunds_ShouldLeaveStateUnchanged()
     {
-        await Assert.ThrowsAsync<InsufficientFundsException>(() => Run(s => s.WithdrawAsync(Checking, new WithdrawalRequest(1001m))));
+        await Assert.ThrowsAsync<InsufficientFundsException>(() => Run(s => s.WithdrawAsync(Checking, 1001m)));
         await AssertUnchanged();
     }
 

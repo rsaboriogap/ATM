@@ -104,7 +104,7 @@ public sealed class AtmServiceTests
 
         var result = await _service.DepositAsync(
             account.Id,
-            new DepositRequest(150m));
+            150m);
 
         Assert.Equal(1150m, result.Account.Balance);
         Assert.Equal(150m, result.Transaction.Amount);
@@ -126,7 +126,7 @@ public sealed class AtmServiceTests
         await Assert.ThrowsAsync<InvalidAmountException>(
             () => _service.DepositAsync(
                 account.Id,
-                new DepositRequest(-100m)));
+                -100m));
 
         _unitOfWork.Verify(uow =>
             uow.ExecuteInTransactionAsync<OperationResultDto>(
@@ -144,7 +144,7 @@ public sealed class AtmServiceTests
         await Assert.ThrowsAsync<AccountNotFoundException>(
             () => _service.DepositAsync(
                 Guid.NewGuid(),
-                new DepositRequest(100m)));
+                100m));
 
         _transactions.Verify(
             repository => repository.Add(It.IsAny<Transaction>()),
@@ -158,7 +158,7 @@ public sealed class AtmServiceTests
 
         var result = await _service.WithdrawAsync(
             account.Id,
-            new WithdrawalRequest(250m));
+            250m);
 
         Assert.Equal(750m, result.Account.Balance);
         Assert.Equal("Withdrawal", result.Transaction.Type);
@@ -172,7 +172,7 @@ public sealed class AtmServiceTests
         await Assert.ThrowsAsync<InsufficientFundsException>(
             () => _service.WithdrawAsync(
                 account.Id,
-                new WithdrawalRequest(1500m)));
+                1500m));
 
         Assert.Equal(1000m, account.Balance);
 

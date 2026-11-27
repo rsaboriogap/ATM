@@ -1,4 +1,4 @@
-using ATM.Application.DTOs;
+﻿using ATM.Application.DTOs;
 using ATM.Domain.Exceptions;
 using Microsoft.Data.Sqlite;
 using Xunit;
@@ -14,7 +14,7 @@ public sealed class IsolationTests : AcidTestBase
         Task<bool> Withdraw() => Task.Run(async () =>
         {
             Assert.True(gate.SignalAndWait(TimeSpan.FromSeconds(10)));
-            try { await Run(s => s.WithdrawAsync(Checking, new WithdrawalRequest(800m))); return true; }
+            try { await Run(s => s.WithdrawAsync(Checking, 800m)); return true; }
             catch (InsufficientFundsException) { return false; }
         });
         var results = await Task.WhenAll(Withdraw(), Withdraw());

@@ -111,56 +111,6 @@ namespace ATM.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ATM.Infrastructure.Logging.LogEntry", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Exception")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Level")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MessageTemplate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TimestampUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TraceId")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TimestampUtc");
-
-                    b.HasIndex("TraceId");
-
-                    b.HasIndex("Level", "TimestampUtc");
-
-                    b.ToTable("Logs", (string)null);
-                });
-
             modelBuilder.Entity("ATM.Domain.Entities.Transaction", b =>
                 {
                     b.HasOne("ATM.Domain.Entities.Account", null)

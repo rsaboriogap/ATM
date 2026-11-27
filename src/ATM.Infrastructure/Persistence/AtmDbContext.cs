@@ -1,5 +1,4 @@
 ﻿using ATM.Domain.Entities;
-using ATM.Infrastructure.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace ATM.Infrastructure.Persistence;
@@ -15,8 +14,6 @@ public sealed class AtmDbContext : DbContext
     public DbSet<Account> Accounts => Set<Account>();
 
     public DbSet<Transaction> Transactions => Set<Transaction>();
-
-    public DbSet<LogEntry> Logs => Set<LogEntry>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
