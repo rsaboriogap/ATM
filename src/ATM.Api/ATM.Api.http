@@ -1,3 +1,14 @@
+# Start the API with the https profile, then run "Get accounts" first:
+# the other requests use the first account it returns (Checking).
+
+@baseUrl = https://localhost:7102
+@checkingId = {{accounts.response.body.$[0].id}}
+
+### Get accounts
+
+# @name accounts
+GET {{baseUrl}}/api/accounts
+
 ### Invalid amount
 
 POST {{baseUrl}}/api/accounts/{{checkingId}}/deposits

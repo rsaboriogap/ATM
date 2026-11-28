@@ -2,6 +2,8 @@
 
 This document describes the architecture of the ATM solution as it is implemented today: how the projects are layered, how a request flows through them, and how financial correctness is guaranteed.
 
+Two properties carry most of that guarantee: every balance change goes through an **append-only ledger** ([section 7](#7-append-only-ledger)), and every write is **idempotent**, so a retry after a timeout or dropped connection is never applied twice ([section 7a](#7a-idempotency)).
+
 For setup, running and configuration, see the [README](../../README.md).
 
 ---
@@ -245,6 +247,8 @@ A write can succeed on the server while its response is lost, for example throug
 **Concurrency.** The key lookup runs after `BEGIN IMMEDIATE`, so concurrent requests with the same key are serialized: the second one finds the first one's committed record. The primary key on `Key` is a second safeguard.
 
 **Replays are snapshots.** A replayed response shows the balances as of the original request, not the current ones.
+
+**Other clients.** The header is required, not optional. Any client other than `ATM.Client` must send `Idempotency-Key` on every `POST` (CORS allows it; see [section 8](#8-api-layer)). For how `ATM.Client` uses it, see [Uncertain outcomes](#uncertain-outcomes).
 
 ---
 
