@@ -4,6 +4,8 @@ A simple ATM system built with .NET 10: an ASP.NET Core Minimal API backed by SQ
 
 Every balance change is recorded in an **append-only ledger**. Account balances are derived from that ledger, and the database itself rejects writes that would break it.
 
+Deposits, withdrawals and transfers are **idempotent**: each request carries an `Idempotency-Key`, so a retry after a timeout or dropped connection is never applied twice.
+
 For how the solution is designed, see the [Architecture overview](docs/architecture/architecture-overview.md).
 
 ## Tech stack
@@ -28,7 +30,7 @@ ATM.slnx
 ├── tests/
 │   ├── ATM.Tests/            Unit, integration and ACID tests for Domain/Application/Infrastructure/API
 │   └── ATM.Client.Tests/     bUnit component and client service tests
-├── Scripts/                  Setup.ps1 (local setup) and the scaffolding scripts used to create the solution
+├── Scripts/                  Setup.ps1 (local setup)
 └── docs/architecture/        Architecture overview and design notes
 ```
 
@@ -36,7 +38,7 @@ ATM.slnx
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (`dotnet --list-sdks` should show a `10.0.x` entry)
 - A trusted ASP.NET Core HTTPS development certificate
-- Optional: Visual Studio 2022 17.14+ / Visual Studio 2026, or VS Code with the C# Dev Kit
+- Optional: Visual Studio 2026, or VS Code with the C# Dev Kit (Visual Studio 2022 doesn't officially support targeting .NET 10)
 
 No database server is needed — SQLite is file-based and created automatically.
 
@@ -122,6 +124,13 @@ dotnet run --project src/ATM.Client --launch-profile https
 | Swagger UI (Development only) | https://localhost:7102/swagger |
 | OpenAPI document | https://localhost:7102/openapi/v1.json |
 
+### Uncertain operations
+
+If the client can't confirm whether an operation went through (timeout, lost connection, `503`), it shows a **Transaction status uncertain** alert and blocks new operations until the outcome is known:
+
+- **Retry operation** — resends the same operation with the same idempotency key. It's safe: the server applies it at most once.
+- **Refresh accounts** — reloads balances and history and discards the pending operation.
+
 ### Database
 
 On startup the API applies EF Core migrations automatically and creates `atm.db` in the API's working directory. It seeds two accounts if they don't exist, each with an `OpeningBalance` ledger entry:
@@ -141,6 +150,8 @@ Inconsistencies are reported, never repaired automatically.
 
 To reset the data, stop the API and delete `atm.db` (plus any `atm.db-shm` / `atm.db-wal` files). It will be recreated on the next run.
 
+The database also holds an `IdempotencyRecords` table with one row per successful write, so retries can be recognized. Rows are kept indefinitely; deleting `atm.db` clears them too.
+
 ## Configuration
 
 ### API — `src/ATM.Api/appsettings*.json`
@@ -158,6 +169,8 @@ To reset the data, stop the API and delete `atm.db` (plus any `atm.db-shm` / `at
 | `Api:TimeoutSeconds` | `30` | HTTP request timeout |
 
 If you change the ports in either `launchSettings.json`, update `Api:BaseUrl` and `Cors:AllowedOrigins` to match.
+
+CORS allows the `Content-Type`, `Accept` and `Idempotency-Key` request headers. Any client other than `ATM.Client` must send `Idempotency-Key` on every `POST`.
 
 ## API overview
 
@@ -200,7 +213,9 @@ Errors are returned as RFC 7807 `ProblemDetails` with a machine-readable `code`:
 | `400` | `same_account_transfer` | Source and destination are the same account |
 | `400` | `invalid_request` | Malformed request body, or an `Idempotency-Key` that isn't a GUID |
 | `400` | `idempotency_key_required` | `Idempotency-Key` header missing or empty on a `POST` |
+| `400` | `validation_error` | Required field missing or invalid (e.g. no `amount`) |
 | `404` | `account_not_found` | Unknown account ID |
+| `404` | `not_found` | Unknown route |
 | `409` | `insufficient_funds` | Withdrawal or transfer exceeds the balance |
 | `409` | `balance_limit_exceeded` | The resulting balance would exceed the maximum |
 | `415` | `unsupported_media_type` | Body isn't JSON |
@@ -208,7 +223,7 @@ Errors are returned as RFC 7807 `ProblemDetails` with a machine-readable `code`:
 | `503` | `database_busy` | SQLite was locked; retry with the same `Idempotency-Key` |
 | `500` | `internal_server_error` | Anything else |
 
-You can try the endpoints from Swagger UI or with [src/ATM.Api/ATM.Api.http](src/ATM.Api/ATM.Api.http) in Visual Studio / VS Code.
+You can try the endpoints from Swagger UI or with [src/ATM.Api/ATM.Api.http](src/ATM.Api/ATM.Api.http) in Visual Studio / VS Code (REST Client extension). Run its **Get accounts** request first; the others use the Checking account ID from that response.
 
 ## Running tests
 
@@ -227,10 +242,11 @@ dotnet test tests/ATM.Client.Tests
 
 Integration tests use their own SQLite databases and don't touch `atm.db`, so the API doesn't need to be running.
 
-The suites in `tests/ATM.Tests/Integration/ACID` cover atomicity, consistency (ledger triggers and reconciliation), isolation (concurrent operations) and durability (data survives reopening the database). For example, to run only those:
+The suites in `tests/ATM.Tests/Integration/ACID` cover atomicity, consistency (ledger triggers and reconciliation), isolation (concurrent operations), durability (data survives reopening the database) and idempotency (replays, conflicts, concurrent retries with the same key). For example:
 
 ```bash
 dotnet test tests/ATM.Tests --filter "FullyQualifiedName~Integration.ACID"
+dotnet test tests/ATM.Tests --filter "FullyQualifiedName~Idempotency"
 ```
 
 ### Code coverage
@@ -271,6 +287,6 @@ Things to know about the ledger migrations:
 
 - **Client shows a network/CORS error** — make sure the API is running on `https://localhost:7102` and that both apps were started with the `https` profile. The client's `http` profile (port 5088) isn't in the API's allowed origins.
 - **Browser warns about the certificate** — run `dotnet dev-certs https --trust` and restart the browser.
-- **`503 Database temporarily unavailable`** — SQLite was locked by another writer. Check the operation's result (e.g. the transaction history) before retrying.
+- **`503 Database temporarily unavailable`** — SQLite was locked by another writer. Retry the request with the **same** `Idempotency-Key`; it's applied at most once. In the client, use **Retry operation** on the "Transaction status uncertain" alert.
 - **API fails at startup with `Financial ledger inconsistencies detected` or `Append-Only Ledger triggers are missing`** — the database was changed outside the app or by a migration that dropped the triggers. For local development, stop the API and delete `atm.db` (and `-shm` / `-wal`) to start fresh.
 - **Port already in use** — stop the other process or change the port in `Properties/launchSettings.json`, then update the client/CORS settings as described under [Configuration](#configuration).
